@@ -59,10 +59,10 @@ We value the safety and well-being of our community members and want everyone to
 
 The fermi-ad Community Code of Conduct is licensed under the Creative Commons Attribution-Share Alike 3.0 license. Our Code of Conduct was adapted from Codes of Conduct of other open source projects, including:
 
-* Contributor Covenant
-* Elastic
-* The Fedora Project
-* OpenStack
-* Puppet Labs
-* Ubuntu
-* Ansible
+- Contributor Covenant
+- Elastic
+- The Fedora Project
+- OpenStack
+- Puppet Labs
+- Ubuntu
+- Ansible
