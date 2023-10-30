@@ -1,9 +1,9 @@
 <!-- Lovingly borrowed from the Ansible project -->
 # Community Code of Conduct
 
-Every community can be strengthened by a diverse variety of viewpoints, insights, opinions, skill sets, and skill levels. However, with diversity comes the potential for disagreement and miscommunication. The purpose of this Code of Conduct is to ensure that disagreements and differences of opinion are conducted respectfully and on their own merits, without personal attacks or other behavior that might create an unsafe or unwelcoming environment.
+A diverse variety of viewpoints, insights, opinions, skill sets, and skill levels can strengthen every community. However, with diversity comes the potential for disagreement and miscommunication. The purpose of this Code of Conduct is to ensure that disagreements and differences of opinion are conducted respectfully and on their own merits, without personal attacks or other behavior that might create an unsafe or unwelcoming environment.
 
-These policies are not designed to be a comprehensive set of Things You Cannot Do. We ask that you treat your fellow community members with respect and courtesy, and in general, _don't be a jerk_. This Code of Conduct is meant to be followed in spirit as much as in letter and is not exhaustive.
+These policies are not designed to be a comprehensive list of Things You Cannot Do. We ask that you treat your fellow community members with respect and courtesy and, generally, _don't be a jerk_. This code of conduct is meant to be followed in spirit as much as in letter and is not exhaustive.
 
 All fermi-ad GitHub participants therein are governed by this Code of Conduct and anti-harassment policy. Specifically, this Code of Conduct covers participation in all fermi-ad-related code and documentation contributions, public chat (GitHub Discussions), private correspondence, and public meetings related to fermi-ad.
 
@@ -15,7 +15,7 @@ Contributions of every kind have far-ranging consequences. Just as your work dep
 
 ### Patient
 
-Asynchronous communication can come with its own frustrations, even in the most responsive of communities. Please remember that our community is largely built on effort in concert with many other projects, and that questions, contributions, and requests for support may take some time to receive a response. Repeated "bumps" or "reminders" in rapid succession are not good displays of patience. Additionally, it is considered poor manners to ping a specific person with general questions. Pose your question to the community as a whole, and wait patiently for a response.
+Asynchronous communication can come with its own frustrations, even in the most responsive of communities. Please remember that our community is largely built on effort in concert with many other projects and that questions, contributions, and requests for support may take some time to receive a response. Repeated "bumps" or "reminders" in rapid succession are not good displays of patience. Additionally, it is considered poor manners to ping a specific person with general questions. Pose your question to the community as a whole, and wait patiently for a response.
 
 ### Respectful
 
@@ -23,11 +23,11 @@ Every community inevitably has disagreements, but remember that it is possible t
 
 ### Kind
 
-Everyone should feel welcome in the fermi-ad community, regardless of their background. Please be courteous, respectful and polite to fellow community members. Do not make or post offensive comments related to skill level, gender, gender identity or expression, sexual orientation, disability, physical appearance, body size, race, or religion. Sexualized images or imagery, real or implied violence, intimidation, oppression, stalking, sustained disruption of activities, publishing the personal information of others without explicit permission to do so, unwanted physical contact, and unwelcome sexual attention are all strictly prohibited. Additionally, you are encouraged not to make assumptions about the background or identity of your fellow community members.
+Everyone should feel welcome in the fermi-ad community, regardless of their background. Please be courteous, respectful and polite to fellow community members. Do not make or post offensive comments related to skill level, gender, gender identity or expression, sexual orientation, disability, physical appearance, body size, race, or religion. Sexualized images or imagery, real or implied violence, intimidation, oppression, stalking, sustained disruption of activities, publishing the personal information of others without explicit permission, unwanted physical contact and unwelcome sexual attention are all strictly prohibited. Additionally, you are encouraged not to make assumptions about the background or identity of your fellow community members.
 
 ### Inquisitive
 
-The only stupid question is the one that does not get asked. We encourage our users to ask early and ask often. Rather than asking whether you can ask a question (the answer is always yes!), instead, simply ask your question. You are encouraged to provide as many specifics as possible. Code snippets in the form of [Gists](https://docs.github.com/en/get-started/writing-on-github/editing-and-sharing-content-with-gists/creating-gists) or other paste site links are almost always needed in order to get the most helpful answers. Refrain from pasting multiple lines of code directly into the chat channels - instead use gist.github.com or another paste site to provide code snippets.
+The only stupid question is the one that does not get asked. We encourage our users to ask early and ask often. Rather than asking whether you can ask a question (the answer is always yes!), instead, simply ask your question. You are encouraged to provide as many specifics as possible. Code snippets in the form of [Gists](https://docs.github.com/en/get-started/writing-on-github/editing-and-sharing-content-with-gists/creating-gists) or other paste site links are almost always needed to get the most helpful answers. Refrain from pasting multiple lines of code directly into the chat channels - instead, use gist.github.com or another paste site to provide code snippets.
 
 ### Helpful
 
@@ -38,7 +38,7 @@ The fermi-ad community is committed to being a welcoming environment for all use
 Harassment includes (but is not limited to) all of the following behaviors:
 
 - Offensive comments related to gender (including gender expression and identity), age, sexual orientation, disability, physical appearance, body size, race, and religion
-- Derogatory terminology including words commonly known to be slurs
+- Derogatory terminology, including words commonly known to be slurs
 - Posting sexualized images or imagery in public spaces
 - Deliberate intimidation
 - Stalking
@@ -53,7 +53,7 @@ In addition to the behaviors outlined above, continuing to behave a certain way 
 
 ## Policy violations
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting anyone with administrative power in community (Admins on GitHub or Slack).
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting anyone with administrative power in the community (Admins on GitHub or Slack).
 
 We value the safety and well-being of our community members and want everyone to feel welcome at our events, both online and offline.
 
@@ -66,3 +66,5 @@ The fermi-ad Community Code of Conduct is licensed under the Creative Commons At
 - Puppet Labs
 - Ubuntu
 - Ansible
+
+_Note:_ For Fermilab employees, this is meant to complement and not supersede the [Fermilab Community Standards](http://directorate-docdb.fnal.gov/cgi-bin/RetrieveFile?docid=174).
