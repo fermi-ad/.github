@@ -30,7 +30,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: adregistry.fnal.gov/applications/{{ github.event.repository.name }}
+          images: adregistry.fnal.gov/applications/${{ github.event.repository.name }}
           tags: |
             # This is the default tag for the last commit of the default branch
             type=edge
