@@ -1,9 +1,9 @@
 {
     "name": "Flutter Web App Deployment",
-    "description": "Starter workflow for Flutter web deployment.",
+    "description": "Build and deploy a Flutter web app.",
     "iconName": "octicon upload",
     "categories": [
-        "deployment",
+        "Deployment",
         "Dart",
         "Kubernetes"
     ]
