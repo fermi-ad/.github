@@ -1,0 +1,10 @@
+{
+    "name": "Flutter Web App Deployment",
+    "description": "Starter workflow for Flutter web deployment.",
+    "iconName": "octicon upload",
+    "categories": [
+        "deployment",
+        "Dart",
+        "Kubernetes"
+    ]
+}
