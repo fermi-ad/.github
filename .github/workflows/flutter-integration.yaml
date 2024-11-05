@@ -2,6 +2,10 @@ name: Continuous Integration workflow for Flutter apps
 
 on:
   workflow_call:
+    inputs:
+      test:
+        required: true
+        type: string
 
 jobs:
 
@@ -26,7 +30,7 @@ jobs:
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: beta
-      
+
       - name: Installing chromedriver (needed for Integration tests)
         uses: nanasess/setup-chromedriver@v2
 
@@ -39,7 +43,7 @@ jobs:
         run: |
           chromedriver --port=4444 &
           flutter pub get
-          flutter drive --chrome-binary=${{ steps.setup-chrome.outputs.chrome-path }} --driver=test/acceptance/driver/integration_test.dart --target=test/acceptance/${{ matrix.test }}.dart -d web-server --dart-define=USE_MOCK_SERVICES=true
+          flutter drive --chrome-binary=${{ steps.setup-chrome.outputs.chrome-path }} --driver=test/acceptance/driver/integration_test.dart --target=test/acceptance/${{ inputs.test }}.dart -d web-server --dart-define=USE_MOCK_SERVICES=true
 
   Linter-UnitTest-SmokeTest-Build:
     runs-on: ubuntu-latest
