@@ -1,0 +1,9 @@
+{
+    "name": "Flutter Web App Integration",
+    "description": "Build and test a Flutter web app.",
+    "iconName": "octicon git-pull-request",
+    "categories": [
+        "Integration",
+        "Dart"
+    ]
+}
