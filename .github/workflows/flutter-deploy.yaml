@@ -39,7 +39,7 @@ jobs:
       - name: Building web application
         run: |
           flutter pub get
-          flutter build web
+          flutter build web --no-web-resources-cdn
 
       - name: Docker meta
         id: meta
