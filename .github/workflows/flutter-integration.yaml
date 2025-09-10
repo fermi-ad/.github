@@ -11,15 +11,29 @@ jobs:
 
   Integration-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Generate test configuration
-        run: |
-          cp .env-test .env
+      - name: Create an empty environment file that will be over-written later
+        run: touch .env
 
+      
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
@@ -51,20 +65,26 @@ jobs:
     steps:
       - name: Checking out source code
         uses: actions/checkout@v4
+        
+      - name: Create an empty environment file that will be over-written later
+        run: touch .env
+      
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
 
-      - name: Generate test configuration
+      - name: Configure Git for private repo access
         run: |
-          cp .env-test .env
-
+          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
-
-      # Configure Git to use the PAT for subsequent operations
-      - name: Configure Git for private repo access
-        run: |
-          git config --global url."https://${{ secrets.FLUTTER_CORE_SECRET }}@github.com/".insteadOf "https://github.com/"
 
       - name: Resolving dependencies
         run: flutter pub get
