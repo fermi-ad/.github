@@ -18,12 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create an empty environment file that will be over-written later
+      - name: Create an empty environment file that will be overwritten later
         run: touch .env
 
-      
       - name: Generate a token
-        id: generate-token
+        id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
@@ -32,7 +31,7 @@ jobs:
 
       - name: Configure Git for private repo access
         run: |
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
           
       - uses: subosito/flutter-action@v2
         with:
@@ -48,11 +47,6 @@ jobs:
       - name: Installing chromedriver (needed for Integration tests)
         uses: nanasess/setup-chromedriver@v2
 
-      # Configure Git to use the PAT for subsequent operations
-      - name: Configure Git for private repo access
-        run: |
-          git config --global url."https://${{ secrets.FLUTTER_CORE_SECRET }}@github.com/".insteadOf "https://github.com/"
-
       - name: Starting chromedriver and executing integration test
         run: |
           chromedriver --port=4444 &
@@ -66,11 +60,11 @@ jobs:
       - name: Checking out source code
         uses: actions/checkout@v4
         
-      - name: Create an empty environment file that will be over-written later
+      - name: Create an empty environment file that will be overwritten later
         run: touch .env
       
       - name: Generate a token
-        id: generate-token
+        id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
@@ -79,7 +73,7 @@ jobs:
 
       - name: Configure Git for private repo access
         run: |
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
           
       - uses: subosito/flutter-action@v2
         with:
