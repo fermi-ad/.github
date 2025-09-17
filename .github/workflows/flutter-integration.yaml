@@ -86,14 +86,16 @@ jobs:
       - name: Linting
         run: flutter analyze .
 
-      - name: Running unit tests
-        run: |
-          flutter test test/unit_tests
-
-      - name: Running widget tests
-        run: |
-          flutter test test/widget
-
       - name: Building web application
         run: |
           flutter build web
+
+      - name: Running unit and widget tests with coverage
+        run: |
+          flutter test test/unit_tests test/widget --coverage
+
+      - name: Generate coverage report 
+        uses: fermi-ad/code-coverage-reporter@v1.0.0
+        with:
+          include_pattern: ^.*\.dart$
+          exclude_pattern: test/|\.dart_tool/
