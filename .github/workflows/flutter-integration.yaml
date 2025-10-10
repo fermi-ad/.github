@@ -38,11 +38,11 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Install Chrome beta
+      - name: Install Chrome
         id: setup-chrome
         uses: browser-actions/setup-chrome@v1
         with:
-          chrome-version: beta
+          chrome-version: stable
 
       - name: Installing chromedriver (needed for Integration tests)
         uses: nanasess/setup-chromedriver@v2
