@@ -1,0 +1,45 @@
+name: Continuous Integration workflow for Rust apps
+
+on:
+  workflow_call:
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    permissions: 
+      contents: read
+      pull-requests: write # Enables code-coverage-reporter to write comments
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Rust relies on a Low-Level Virtual Machine (LLVM) to capture coverage, 
+      # and some massaging of the output binary is needed to get an LCOV file. 
+      # These tools do that processing for us.
+      - name: Install coverage dependencies
+        run: cargo install grcov && rustup component add llvm-tools
+      
+      - name: Run tests with coverage (includes building the project)
+        run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test
+
+      # Breakdown of the command here:
+      # grcov ./target                     : Run grcov using profraw files found in the target/ directory
+      # --binary-path ./target/debug/deps/ : Path to the compiled binaries
+      # -s .                               : Source directory
+      # -t lcov                            : Specify output format as lcov
+      # --ignore-not-existing              : Ignore files that may be "referenced" in the compiled binaries but don't actually exist on disk (quirk of the LLVM and gcov)
+      # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
+      # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
+      - name: Process raw coverage data into lcov format
+        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore "/*" -o target/lcov.info
+
+      - name: Generate coverage report
+        uses: fermi-ad/code-coverage-reporter@v1.0.0
+        with:
+          coverage_file: target/lcov.info
+          include_pattern: ^.*\.rs$
+          exclude_pattern: target/
+      
+      - name: Lint
+        run: cargo fmt --all -- --check 
