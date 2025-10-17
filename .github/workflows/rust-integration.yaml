@@ -39,12 +39,16 @@ jobs:
       # These tools do that processing for us.
       - if: ${{ steps.caching.outputs.cache-hit != 'true' }}
         name: Install coverage dependencies
-        run: cargo install grcov && rustup component add llvm-tools
+        run: cargo install grcov
+
+      - name: Configure rustc so machine code can be read by the coverage reporter
+        run: rustup component add llvm-tools
       
       - name: Run tests with coverage (includes building the project)
         run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test
 
       # Breakdown of the command here:
+      #
       # grcov ./target                     : Run grcov using profraw files found in the target/ directory
       # --binary-path ./target/debug/deps/ : Path to the compiled binaries
       # -s .                               : Source directory
