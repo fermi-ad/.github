@@ -36,9 +36,10 @@ jobs:
       # Rust relies on a Low-Level Virtual Machine (LLVM) to capture coverage, 
       # and some massaging of the output binary is needed to get an LCOV file. 
       # This tool does that processing for us.
-      # NOTE: using "keep-going" flag to prevent failures when the tool is already installed (pulled in from cache)
+      # NOTE: First checks if grcov is already installed (pulled from cache), and only proceeds if not found
+      # The `&> /dev/null` portion ensures the output of `command -v grcov` is discarded 
       - name: Install coverage dependencies
-        run: cargo install grcov --keep-going
+        run: command -v grcov &> /dev/null || cargo install grcov
 
       - name: Configure rustc so machine code can be read by the coverage reporter
         run: rustup component add llvm-tools
