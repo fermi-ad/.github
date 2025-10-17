@@ -70,7 +70,7 @@ jobs:
       - if: always()
         name: Report linting results
         run: |
-          if "${{ steps.linting.outcome }}" = "failure"; then
+          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
             echo "Failure in linting step. See that step's output for details." &> 2
             exit 1
           fi
