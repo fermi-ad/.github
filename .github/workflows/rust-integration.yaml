@@ -6,9 +6,6 @@ on:
 jobs:
   analysis:
     runs-on: ubuntu-latest
-    permissions: 
-      contents: read
-      pull-requests: write # Enables code-coverage-reporter to write comments
 
     steps:
       - name: Checkout code
