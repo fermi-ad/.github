@@ -21,6 +21,7 @@ jobs:
         continue-on-error: true
         
       - name: Set up cargo cache
+        id: caching
         uses: actions/cache@v3
         continue-on-error: false
         with:
@@ -36,7 +37,8 @@ jobs:
       # Rust relies on a Low-Level Virtual Machine (LLVM) to capture coverage, 
       # and some massaging of the output binary is needed to get an LCOV file. 
       # These tools do that processing for us.
-      - name: Install coverage dependencies
+      - if: ${{ steps.caching.outputs.cache-hit != 'true' }}
+        name: Install coverage dependencies
         run: cargo install grcov && rustup component add llvm-tools
       
       - name: Run tests with coverage (includes building the project)
