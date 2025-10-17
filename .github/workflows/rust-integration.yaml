@@ -16,11 +16,12 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Lint
+        id: linting
         run: cargo fmt --all -- --check && cargo clippy -- -D warnings
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
         
-      - name: Set up cargo cache
+      - name: Pull from dependency cache
         uses: actions/cache@v3
         continue-on-error: false
         with:
@@ -65,3 +66,11 @@ jobs:
           coverage_file: target/lcov.info
           include_pattern: ^.*\.rs$
           exclude_pattern: target/
+
+      - if: always()
+        name: Report linting results
+        run: |
+          if ${{ steps.linting.outcome }} = "failed"; then
+            echo "Failure in linting step. See that step's output for details." &> 2
+            exit 1
+          fi
