@@ -58,7 +58,7 @@ jobs:
       # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
       # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
       - name: Process raw coverage data into lcov format
-        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore "/*" -o target/lcov.info
+        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "target/**" -o target/lcov.info
 
       - name: Generate coverage report
         uses: fermi-ad/code-coverage-reporter@v1.0.1
