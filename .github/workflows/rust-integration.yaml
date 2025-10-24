@@ -61,7 +61,7 @@ jobs:
         run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "target/**" -o target/lcov.info
 
       - name: Generate coverage report
-        uses: fermi-ad/code-coverage-reporter@v1.0.1
+        uses: fermi-ad/code-coverage-reporter@v1.0.2
         with:
           coverage_file: target/lcov.info
           include_pattern: ^.*\.rs$
