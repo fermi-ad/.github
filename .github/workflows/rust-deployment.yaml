@@ -1,7 +1,7 @@
 name: Continuous Deployment of Rust Applications
 
 on:
-  workflow-call:
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
