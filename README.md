@@ -19,6 +19,4 @@ jobs:
     uses: ./.github/workflows/deploy-<lang>-docs.yaml@main
     secrets: inherit
 ```
-```
-```
 
