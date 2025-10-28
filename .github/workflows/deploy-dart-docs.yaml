@@ -1,0 +1,50 @@
+name: Deploy Source Reference Documentation
+
+on:
+  workflow_call:
+    inputs:
+      required: true
+      type: string
+      description: The branch, tag, or SHA to checkout.
+
+permissions:
+  pages: write     # Needed to deploy to GitHub Pages
+  id-token: write  # Needed for the deploy step
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dartdoc
+        run: dart pub global activate dartdoc
+
+      - name: Generate Dart Docs
+        # Output goes to `doc/api/`
+        run: dart pub global run dartdoc
+
+      - name: Move Docs to a Standard Location
+        run: |
+          mkdir -p ./docs/reference
+          cp -r doc/api/* ./docs/reference
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+
