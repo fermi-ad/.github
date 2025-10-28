@@ -2,10 +2,6 @@ name: Deploy Source Reference Documentation
 
 on:
   workflow_call:
-    inputs:
-      required: true
-      type: string
-      description: The branch, tag, or SHA to checkout.
 
 permissions:
   pages: write     # Needed to deploy to GitHub Pages
