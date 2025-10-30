@@ -6,6 +6,11 @@ on:
       test:
         required: true
         type: string
+      pull-git-submodules:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has Git submodules to pull.'
 
 jobs:
 
@@ -17,6 +22,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
 
       - name: Create an empty environment file that will be overwritten later
         run: touch .env
@@ -59,6 +66,8 @@ jobs:
     steps:
       - name: Checking out source code
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
         
       - name: Create an empty environment file that will be overwritten later
         run: touch .env

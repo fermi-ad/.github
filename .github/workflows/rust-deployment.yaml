@@ -2,6 +2,12 @@ name: Continuous Deployment of Rust Applications
 
 on:
   workflow_call:
+    inputs:
+      pull-git-submodules:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has Git submodules to pull.'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -17,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
 
       - name: Pull from dependency cache
         uses: actions/cache@v4

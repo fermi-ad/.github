@@ -2,6 +2,12 @@ name: Continuous Integration workflow for Rust apps
 
 on:
   workflow_call:
+    inputs:
+      pull-git-submodules:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has Git submodules to pull.'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -14,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
         
       - name: Pull from dependency cache
         uses: actions/cache@v3
@@ -58,19 +66,19 @@ jobs:
       # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
       # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
       - name: Process raw coverage data into lcov format
-        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore "/*" --ignore "target/**" -o target/lcov.info
+        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
 
       - name: Generate coverage report
         uses: fermi-ad/code-coverage-reporter@v1.1.1
         with:
           coverage_file: target/lcov.info
-          include_pattern: ^.*\.rs$
+          include_pattern: src/.*\.rs$
           exclude_pattern: target/
 
       - if: always()
         name: Report linting results
         run: |
           if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "Failure in linting step. See that step's output for details." &> 2
+            echo "Failure in linting step. See that step's output for details."
             exit 1
           fi
