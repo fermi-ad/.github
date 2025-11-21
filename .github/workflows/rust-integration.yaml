@@ -68,13 +68,12 @@ jobs:
       - name: Process raw coverage data into lcov format
         run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
 
-      - if: ${{ github.event.repository.visibility != 'public' }}
-        name: Generate coverage report
-        uses: fermi-ad/code-coverage-reporter@v1.1.1
-        with:
-          coverage_file: target/lcov.info
-          include_pattern: src/.*\.rs$
-          exclude_pattern: target/
+#      - name: Generate coverage report
+#        uses: fermi-ad/code-coverage-reporter@v1.1.1
+#        with:
+#          coverage_file: target/lcov.info
+#          include_pattern: src/.*\.rs$
+#          exclude_pattern: target/
 
       - if: always()
         name: Report linting results
