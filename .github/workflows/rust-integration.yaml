@@ -68,6 +68,8 @@ jobs:
       - name: Process raw coverage data into lcov format
         run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
 
+# TODO Uncomment this once the coverage reporter is publicly available
+#
 #      - name: Generate coverage report
 #        uses: fermi-ad/code-coverage-reporter@v1.1.1
 #        with:
