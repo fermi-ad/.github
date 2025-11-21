@@ -68,14 +68,22 @@ jobs:
       - name: Process raw coverage data into lcov format
         run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
 
-# TODO Uncomment this once the coverage reporter is publicly available
-#
-#      - name: Generate coverage report
-#        uses: fermi-ad/code-coverage-reporter@v1.1.1
-#        with:
-#          coverage_file: target/lcov.info
-#          include_pattern: src/.*\.rs$
-#          exclude_pattern: target/
+      - name: Generate token for access to coverage reporter
+        id: generate-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.ACTION_READ_APP_ID }}
+          private-key: ${{ secrets.READ_ALL_REPOS }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Generate coverage report
+        uses: fermi-ad/code-coverage-reporter@v1.1.1
+        env:
+          GH_TOKEN: ${{ steps.generate-token.output.token }}
+        with:
+          coverage_file: target/lcov.info
+          include_pattern: src/.*\.rs$
+          exclude_pattern: target/
 
       - if: always()
         name: Report linting results
