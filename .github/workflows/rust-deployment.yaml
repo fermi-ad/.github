@@ -8,6 +8,11 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has Git submodules to pull.'
+      references-internal-git-repo:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -19,6 +24,8 @@ env:
 jobs:
   Build-Push:
     runs-on: ubuntu-latest
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
 
     steps:
       - name: Checkout code
@@ -37,6 +44,20 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Generate a token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install protoc
         uses: arduino/setup-protoc@v1
