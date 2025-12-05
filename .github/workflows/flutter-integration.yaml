@@ -4,8 +4,9 @@ on:
   workflow_call:
     inputs:
       test:
-        required: true
+        required: false
         type: string
+        default: ''
       pull-git-submodules:
         required: false
         type: boolean
@@ -15,6 +16,7 @@ on:
 jobs:
 
   Integration-tests:
+    if: ${{ inputs.test != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -54,7 +56,17 @@ jobs:
       - name: Installing chromedriver (needed for Integration tests)
         uses: nanasess/setup-chromedriver@v2
 
+      - name: Check whether integration test exists
+        id: check-integration-test
+        run: |
+          if [ -f test/acceptance/driver/integration_test.dart ]; then
+            echo "run_integration=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_integration=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Starting chromedriver and executing integration test
+        if: ${{ steps.check-integration-test.outputs.run_integration == 'true' }}
         run: |
           chromedriver --port=4444 &
           flutter pub get
