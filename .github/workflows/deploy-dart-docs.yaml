@@ -6,6 +6,7 @@ on:
 permissions:
   pages: write     # Needed to deploy to GitHub Pages
   id-token: write  # Needed for the deploy step
+  contents: read   # Can't see repo contents without this
 
 jobs:
   build:
