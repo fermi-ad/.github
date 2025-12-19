@@ -6,6 +6,7 @@ on:
 permissions:
   pages: write     # Needed to deploy
   id-token: write  # Needed for auth
+  contents: read   # Can't see repo contents without this
 
 jobs:
   build:
