@@ -22,14 +22,6 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
-
-      - name: Create an empty environment file that will be overwritten later
-        run: touch .env
-
       - name: Generate a token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -41,6 +33,14 @@ jobs:
       - name: Configure Git for private repo access
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+
+      - name: Create an empty environment file that will be overwritten later
+        run: touch .env
           
       - uses: subosito/flutter-action@v2
         with:
