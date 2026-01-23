@@ -12,6 +12,11 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has Git submodules to pull.'
+      coverage-exclude:
+        required: false
+        type: string
+        default: ''
+        description: 'Patterns to add to the coverage exclude configuration.'
 
 jobs:
 
@@ -121,4 +126,4 @@ jobs:
         uses: fermi-ad/code-coverage-reporter@v1.1.1
         with:
           include_pattern: ^.*\.dart$
-          exclude_pattern: test/|\.dart_tool/
+          exclude_pattern: test/|\.dart_tool/|${{ inputs.coverage-exclude }}
