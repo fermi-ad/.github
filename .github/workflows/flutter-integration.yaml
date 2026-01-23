@@ -22,14 +22,6 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
-
-      - name: Create an empty environment file that will be overwritten later
-        run: touch .env
-
       - name: Generate a token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -37,6 +29,15 @@ jobs:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Create an empty environment file that will be overwritten later
+        run: touch .env
 
       - name: Configure Git for private repo access
         run: |
@@ -76,14 +77,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checking out source code
-        uses: actions/checkout@v4
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
-        
-      - name: Create an empty environment file that will be overwritten later
-        run: touch .env
-      
       - name: Generate a token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -91,6 +84,15 @@ jobs:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+
+      - name: Checking out source code
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+          token: ${{ steps.app-token.outputs.token }}
+        
+      - name: Create an empty environment file that will be overwritten later
+        run: touch .env
 
       - name: Configure Git for private repo access
         run: |
