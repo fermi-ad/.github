@@ -16,7 +16,7 @@ on:
         required: false
         type: string
         default: ''
-        description: 'Patterns to add to the coverage exclude configuration.'
+        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
 
 jobs:
 
