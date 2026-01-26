@@ -13,6 +13,11 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo'
+      coverage-exclude:
+        required: false
+        type: string
+        default: ''
+        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -98,7 +103,7 @@ jobs:
         with:
           coverage_file: target/lcov.info
           include_pattern: src/.*\.rs$
-          exclude_pattern: target/
+          exclude_pattern: target/${{ inputs.coverage-exclude }}
 
       - if: always()
         name: Report linting results
