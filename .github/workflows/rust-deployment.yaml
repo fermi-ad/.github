@@ -35,7 +35,7 @@ jobs:
     steps:
       - if: ${{ inputs.static-dependencies }}
         name: Install static packages
-        run: sudo apt-get install ${{ inputs.static-dependencies }}
+        run: sudo apt-get install -y ${{ inputs.static-dependencies }}
 
       - name: Checkout code
         uses: actions/checkout@v4
