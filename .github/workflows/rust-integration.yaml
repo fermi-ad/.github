@@ -3,6 +3,11 @@ name: Continuous Integration workflow for Rust apps
 on:
   workflow_call:
     inputs:
+      coverage-exclude:
+        required: false
+        type: string
+        default: ''
+        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
       pull-git-submodules:
         required: false
         type: boolean
@@ -13,11 +18,11 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo'
-      coverage-exclude:
-        required: false
+      static-dependencies:
+        required: false 
         type: string
         default: ''
-        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
+        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -30,6 +35,10 @@ jobs:
       CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
 
     steps:
+      - if: ${{ inputs.static-dependencies }}
+        name: Install static packages
+        run: sudo apt-get install ${{ inputs.static-dependencies }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -58,7 +67,6 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
       - name: Lint
@@ -78,10 +86,6 @@ jobs:
 
       - name: Configure rustc so machine code can be read by the coverage reporter
         run: rustup component add llvm-tools
-
-      - name: Clear out any cached coverage files 
-        continue-on-error: true
-        run: rm target/*.profraw target/lcov.info
       
       - name: Run tests with coverage (includes building the project)
         run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test
