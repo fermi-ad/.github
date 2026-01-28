@@ -2,6 +2,12 @@ name: Deploy Source Reference Documentation
 
 on:
   workflow_call:
+    inputs:
+      pull-git-submodules:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has Git submodules to pull.'
 
 permissions:
   pages: write     # Needed to deploy to GitHub Pages
@@ -14,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
 
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
