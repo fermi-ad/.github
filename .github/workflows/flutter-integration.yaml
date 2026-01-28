@@ -3,6 +3,11 @@ name: Continuous Integration workflow for Flutter apps
 on:
   workflow_call:
     inputs:
+      coverage-exclude:
+        required: false
+        type: string
+        default: ''
+        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
       test:
         required: false
         type: string
@@ -12,11 +17,6 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has Git submodules to pull.'
-      coverage-exclude:
-        required: false
-        type: string
-        default: ''
-        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
 
 jobs:
 
