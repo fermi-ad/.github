@@ -1,0 +1,90 @@
+name: Deploy Source Reference Documentation
+
+on:
+  workflow_call:
+    inputs:
+      pull-git-submodules:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has Git submodules to pull.'
+      references-internal-git-repo:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo'
+      static-dependencies:
+        required: false 
+        type: string
+        default: ''
+        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
+
+permissions:
+  pages: write     # Needed to deploy
+  id-token: write  # Needed for auth
+  contents: read   # Can't see repo contents without this
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
+
+    steps:
+      - if: ${{ inputs.static-dependencies }}
+        name: Install static packages
+        run: sudo apt-get install -y ${{ inputs.static-dependencies }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Generate a token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+        
+      - name: Pull from dependency cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Generate Rust Docs
+        # Output goes to `target/doc/`
+        run: cargo doc --no-deps
+
+      - name: Consolidate Documentation
+        run: |
+          mkdir -p ./docs/reference
+          cp -r target/doc/* ./docs/reference
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+
+  deploy:
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+
