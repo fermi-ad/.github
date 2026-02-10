@@ -16,10 +16,6 @@ on:
         required: false
         type: string
         default: 'main'
-      pr_label:
-        required: false
-        type: string
-        default: 'dependencies'
     secrets:
       APP_ID:
         required: true
@@ -70,7 +66,6 @@ jobs:
               --body "This is an automated update for the \`${{ inputs.submodule_name }}\` submodule at path \`${{ inputs.submodule_path }}\`. This PR was triggered by an external update notification." \
               --base ${{ inputs.base_branch }} \
               --head "$BRANCH_NAME" \
-              --label "${{ inputs.pr_label }}"
           else
             echo "No changes detected in ${{ inputs.submodule_path }}."
           fi
