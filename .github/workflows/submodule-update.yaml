@@ -65,7 +65,7 @@ jobs:
               --title "Update ${{ inputs.submodule_name }} Submodule" \
               --body "This is an automated update for the \`${{ inputs.submodule_name }}\` submodule at path \`${{ inputs.submodule_path }}\`. This PR was triggered by an external update notification." \
               --base ${{ inputs.base_branch }} \
-              --head "$BRANCH_NAME" \
+              --head "$BRANCH_NAME"
           else
             echo "No changes detected in ${{ inputs.submodule_path }}."
           fi
