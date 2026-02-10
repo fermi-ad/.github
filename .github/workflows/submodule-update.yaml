@@ -1,0 +1,76 @@
+name: Reusable Submodule Update
+
+on:
+  workflow_call:
+    inputs:
+      submodule_name:
+        description: 'Display name of the submodule (e.g., interface-definitions)'
+        required: true
+        type: string
+      submodule_path:
+        description: 'The local directory path of the submodule'
+        required: true
+        type: string
+      base_branch:
+        description: 'The branch to open the PR against'
+        required: false
+        type: string
+        default: 'main'
+      pr_label:
+        required: false
+        type: string
+        default: 'dependencies'
+    secrets:
+      APP_ID:
+        required: true
+      APP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          # Use the app token for checkout so we have permission to push back later
+          token: ${{ steps.generate-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Update and Create PR
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Update the specific submodule path
+          git submodule update --remote ${{ inputs.submodule_path }}
+          
+          if [[ -n $(git status -s) ]]; then
+            # Use timestamp to avoid branch name collisions
+            BRANCH_NAME="automation/update-${{ inputs.submodule_name }}-$(date +%s)"
+            git checkout -b "$BRANCH_NAME"
+            git add ${{ inputs.submodule_path }}
+            git commit -m "chore: update ${{ inputs.submodule_name }} submodule"
+            git push origin "$BRANCH_NAME"
+            
+            # Generalized PR body using the submodule name
+            gh pr create \
+              --title "Update ${{ inputs.submodule_name }} Submodule" \
+              --body "This is an automated update for the \`${{ inputs.submodule_name }}\` submodule at path \`${{ inputs.submodule_path }}\`. This PR was triggered by an external update notification." \
+              --base ${{ inputs.base_branch }} \
+              --head "$BRANCH_NAME" \
+              --label "${{ inputs.pr_label }}"
+          else
+            echo "No changes detected in ${{ inputs.submodule_path }}."
+          fi
