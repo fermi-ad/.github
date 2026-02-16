@@ -116,7 +116,13 @@ jobs:
 
       - name: Building web application
         run: |
-          flutter build web
+          if [ -f "lib/main.dart" ];
+          then
+            flutter build web
+          elif [ -f "example/lib/main.dart" ];
+          then
+            (cd example && flutter pub get && flutter build web)
+          fi
 
       - name: Running unit and widget tests with coverage
         run: |
