@@ -8,7 +8,12 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has Git submodules to pull.'
-
+      use-wasm:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether to build with WebAssembly (--wasm flag).'
+        
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -63,7 +68,7 @@ jobs:
         run: |
           cd "${{ steps.context.outputs.path }}"
           flutter pub get
-          flutter build web --no-web-resources-cdn --wasm
+          flutter build web --no-web-resources-cdn ${{ inputs.use-wasm && '--wasm' || '' }}
 
       - name: Docker meta
         id: meta
