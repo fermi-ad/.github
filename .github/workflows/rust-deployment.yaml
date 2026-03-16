@@ -67,9 +67,6 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-
       - name: Build
         run: cargo build --release --verbose
 
