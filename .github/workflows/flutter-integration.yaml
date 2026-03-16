@@ -29,17 +29,26 @@ jobs:
     steps:
       - name: Generate a token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
           token: ${{ steps.app-token.outputs.token }}
+
+      - name: Check whether integration test exists
+        run: |
+          if [ -f test/acceptance/driver/integration_test.dart ]; then
+            echo "Integration test file located"
+          else
+            echo "Failed to find integration test file"
+            exit 1
+          fi
 
       - name: Create an empty environment file that will be overwritten later
         run: touch .env
@@ -55,24 +64,14 @@ jobs:
 
       - name: Install Chrome
         id: setup-chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
 
       - name: Installing chromedriver (needed for Integration tests)
         uses: nanasess/setup-chromedriver@v2
 
-      - name: Check whether integration test exists
-        id: check-integration-test
-        run: |
-          if [ -f test/acceptance/driver/integration_test.dart ]; then
-            echo "run_integration=true" >> $GITHUB_OUTPUT
-          else
-            echo "run_integration=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Starting chromedriver and executing integration test
-        if: ${{ steps.check-integration-test.outputs.run_integration == 'true' }}
         run: |
           chromedriver --port=4444 &
           flutter pub get
@@ -84,14 +83,14 @@ jobs:
     steps:
       - name: Generate a token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
       - name: Checking out source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
           token: ${{ steps.app-token.outputs.token }}
@@ -129,7 +128,7 @@ jobs:
           flutter test test/unit_tests test/widget --coverage
 
       - name: Generate coverage report 
-        uses: fermi-ad/code-coverage-reporter@v1.1.2
+        uses: fermi-ad/code-coverage-reporter@v2.0.0
         with:
           include_pattern: ^.*\.dart$
           exclude_pattern: test/|\.dart_tool/${{ inputs.coverage-exclude }}
