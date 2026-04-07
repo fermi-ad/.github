@@ -1,0 +1,90 @@
+name: AP Python Continuous Integration
+
+on:
+  workflow_call:
+    inputs:
+      coverage-exclude:
+        required: false
+        type: string
+        default: ''
+        description: 'Patterns to add to the coverage exclude configuration. Must begin with a pipe (|) character!'
+      pull-git-submodules:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has Git submodules to pull.'
+      references-internal-git-repo:
+        required: false
+        type: boolean
+        default: false
+        description: 'Indicates whether this repository has a dependency in its pyproject.toml that comes from an internal GitHub repo'
+      static-dependencies:
+        required: false 
+        type: string
+        default: ''
+        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install static packages
+        run: sudo apt-get update -y && sudo apt-get install -y libkrb5-dev ${{ inputs.static-dependencies }}
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Generate a token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+        
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          # Enable automatic caching of the uv package store
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv python install && uv sync --locked --all-extras --dev
+      
+      - name: Lint
+        id: linting
+        run: uv run ruff check . 
+        # Ensures we also run the unit tests even if there are linting errors
+        continue-on-error: true
+      
+      - name: Run tests with coverage
+        run: uv run pytest --cov=src --cov-report=lcov:lcov.info
+
+      - name: Generate coverage report
+        uses: fermi-ad/code-coverage-reporter@v2.0.0
+        with:
+          coverage_file: lcov.info
+          include_pattern: src/.*\.py$
+          exclude_pattern: tests/${{ inputs.coverage-exclude }}
+
+      - if: always()
+        name: Report linting results
+        run: |
+          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
+            echo "Failure in linting step. See that step's output for details."
+            exit 1
+          fi
