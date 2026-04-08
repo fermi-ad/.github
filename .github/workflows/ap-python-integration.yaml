@@ -50,7 +50,10 @@ jobs:
       - name: Lint
         id: linting
         run: |
-            result=$(uv run ruff check .) >> "$GITHUB_OUTPUT"
+            RESULTS=$(uv run ruff check .)
+            echo "lints<<EOF" >> $GITHUB_OUTPUT
+            echo "$RESULTS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
       
@@ -68,6 +71,6 @@ jobs:
         name: Report linting results
         run: |
           if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "${{ steps.linting.output }}"
+            echo "${{ steps.linting.output.lints }}"
             exit 1
           fi
