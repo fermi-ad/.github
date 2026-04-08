@@ -3,12 +3,6 @@ name: AP Python Continuous Delivery
 on:
   workflow_call:
     inputs:
-      pull-git-submodules:
-        required: false
-        type: boolean
-        default: false
-        description: 'Indicates whether this repository has Git submodules to pull.'
-
       image-variant:
         required: false
         type: string
@@ -26,8 +20,6 @@ jobs:
     steps:
       - name: Checking out source code
         uses: actions/checkout@v6
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
 
       - name: Docker meta
         id: meta
