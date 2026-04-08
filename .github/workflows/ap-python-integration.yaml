@@ -49,7 +49,8 @@ jobs:
       
       - name: Lint
         id: linting
-        run: uv run ruff check . >> "$GITHUB_OUTPUT"
+        run: |
+            result=$(uv run ruff check .) >> "$GITHUB_OUTPUT"
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
       
