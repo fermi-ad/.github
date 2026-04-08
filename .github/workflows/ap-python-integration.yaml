@@ -51,9 +51,10 @@ jobs:
         id: linting
         run: |
             set +e
-            RESULTS=$(uv run ruff check . | base64 -w 0)
+            RESULTS=$(uv run ruff check .)
             CODE=$?
-            echo "lints=$RESULTS" >> $GITHUB_OUTPUT
+            ENCODED=$( echo "$RESULTS" | base64 -w 0 )
+            echo "lints=$ENCODED" >> $GITHUB_OUTPUT
             exit $CODE
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
