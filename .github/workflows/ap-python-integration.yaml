@@ -13,11 +13,6 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has Git submodules to pull.'
-      references-internal-git-repo:
-        required: false
-        type: boolean
-        default: false
-        description: 'Indicates whether this repository has a dependency in its pyproject.toml that comes from an internal GitHub repo'
       static-dependencies:
         required: false 
         type: string
@@ -33,27 +28,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install static packages
-        run: sudo apt-get update -y && sudo apt-get install -y libkrb5-dev ${{ inputs.static-dependencies }}
+      - if: ${{ inputs.static-dependencies }}
+        name: Install static packages
+        run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
 
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
-
-      - if: ${{ inputs.references-internal-git-repo }}
-        name: Generate a token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
-          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
-      - if: ${{ inputs.references-internal-git-repo }}
-        name: Configure Git for private repo access
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
         
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -67,7 +49,7 @@ jobs:
       
       - name: Lint
         id: linting
-        run: uv run ruff check . 
+        run: uv run ruff check . >> "$GITHUB_OUTPUT"
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
       
@@ -79,12 +61,12 @@ jobs:
         with:
           coverage_file: lcov.info
           include_pattern: src/.*\.py$
-          exclude_pattern: tests/${{ inputs.coverage-exclude }}
+          exclude_pattern: ${{ inputs.coverage-exclude }}
 
       - if: always()
         name: Report linting results
         run: |
           if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "Failure in linting step. See that step's output for details."
+            echo "${{ steps.linting.output }}"
             exit 1
           fi
