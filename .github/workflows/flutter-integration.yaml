@@ -109,9 +109,18 @@ jobs:
 
       - name: Resolving dependencies
         run: flutter pub get
-
-      - name: Linting
-        run: flutter analyze .
+      
+      - name: Lint
+        id: linting
+        run: |
+            set +e
+            RESULTS=$(flutter analyze .)
+            CODE=$?
+            ENCODED=$( echo "$RESULTS" | base64 -w 0 )
+            echo "lints=$ENCODED" >> $GITHUB_OUTPUT
+            exit $CODE
+        # Ensures we also run the unit tests even if there are linting errors
+        continue-on-error: true
 
       - name: Building web application
         run: |
@@ -128,7 +137,15 @@ jobs:
           flutter test test/unit_tests test/widget --coverage
 
       - name: Generate coverage report 
-        uses: fermi-ad/code-coverage-reporter@v2.0.0
+        uses: fermi-ad/code-coverage-reporter@v2
         with:
           include_pattern: ^.*\.dart$
           exclude_pattern: test/|\.dart_tool/${{ inputs.coverage-exclude }}
+
+      - if: always()
+        name: Report linting results
+        run: |
+          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
+            echo "${{ steps.linting.outputs.lints }}" | base64 -d
+            exit 1
+          fi
