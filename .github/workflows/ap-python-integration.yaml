@@ -56,7 +56,7 @@ jobs:
         run: uv run pytest --cov=src --cov-report=lcov:lcov.info
 
       - name: Generate coverage report
-        uses: fermi-ad/code-coverage-reporter@v2.0.0
+        uses: fermi-ad/code-coverage-reporter@v2
         with:
           coverage_file: lcov.info
           include_pattern: src/.*\.py$

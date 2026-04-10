@@ -137,7 +137,7 @@ jobs:
           flutter test test/unit_tests test/widget --coverage
 
       - name: Generate coverage report 
-        uses: fermi-ad/code-coverage-reporter@v2.0.0
+        uses: fermi-ad/code-coverage-reporter@v2
         with:
           include_pattern: ^.*\.dart$
           exclude_pattern: test/|\.dart_tool/${{ inputs.coverage-exclude }}
