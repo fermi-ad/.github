@@ -45,11 +45,25 @@ jobs:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
           token: ${{ steps.generate-token.outputs.token }}
 
+      # To ensure reproducibility, we want to fetch the shared resources (nginx config, Dockerfile)
+      # from the same version of the '.github' repository that this workflow is running from.
+      # If a consumer pins this workflow to a specific tag (e.g., @v1.2.3), we should use
+      # the resources from that same tag.
+      - name: Determine shared resources ref
+        id: shared-resources-ref
+        env:
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          # github.workflow_ref looks like 'owner/repo/.github/workflows/name.yaml@ref'
+          # We extract everything after the '@'
+          echo "ref=${WORKFLOW_REF#*@}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout shared resources
         uses: actions/checkout@v6
         with:
           repository: fermi-ad/.github
           path: .shared-resources
+          ref: ${{ steps.shared-resources-ref.outputs.ref }}
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Create an empty environment file that will be over-written later
