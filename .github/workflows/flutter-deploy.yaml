@@ -13,6 +13,11 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether to build with WebAssembly (--wasm flag).'
+      pwa-strategy:
+        required: false
+        type: string
+        default: 'none'
+        description: 'The PWA strategy to use (e.g., none, offline-first). Defaults to none for non-production builds.'
         
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -38,6 +43,27 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+          token: ${{ steps.generate-token.outputs.token }}
+
+      # To ensure reproducibility, we want to fetch the shared resources (nginx config, Dockerfile)
+      # from the same version of the '.github' repository that this workflow is running from.
+      # If a consumer pins this workflow to a specific tag (e.g., @v1.2.3), we should use
+      # the resources from that same tag.
+      - name: Determine shared resources ref
+        id: shared-resources-ref
+        env:
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          # github.workflow_ref looks like 'owner/repo/.github/workflows/name.yaml@ref'
+          # We extract everything after the '@'
+          echo "ref=${WORKFLOW_REF#*@}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout shared resources
+        uses: actions/checkout@v6
+        with:
+          repository: fermi-ad/.github
+          path: .shared-resources
+          ref: ${{ steps.shared-resources-ref.outputs.ref }}
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Create an empty environment file that will be over-written later
@@ -67,8 +93,23 @@ jobs:
       - name: Building web application
         run: |
           cd "${{ steps.context.outputs.path }}"
+          
+          # Determine PWA strategy: force offline-first for main branch
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            PWA_STRAT="offline-first"
+          else
+            PWA_STRAT="${{ inputs.pwa-strategy }}"
+          fi
+          
+          echo "Building with PWA strategy: $PWA_STRAT"
           flutter pub get
-          flutter build web --no-web-resources-cdn ${{ inputs.use-wasm && '--wasm' || '' }}
+          flutter build web --no-web-resources-cdn --pwa-strategy=$PWA_STRAT ${{ inputs.use-wasm && '--wasm' || '' }}
+
+      - name: Prepare Docker environment
+        run: |
+          # Copy the standardized nginx config and Dockerfile into the build context
+          cp .shared-resources/.github/resources/flutter-nginx.conf "${{ steps.context.outputs.path }}/nginx.conf"
+          cp .shared-resources/.github/resources/flutter.Dockerfile "${{ steps.context.outputs.path }}/flutter.Dockerfile"
 
       - name: Docker meta
         id: meta
@@ -96,6 +137,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ${{ steps.context.outputs.path }}
+          file: ${{ steps.context.outputs.path }}/flutter.Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
