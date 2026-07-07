@@ -51,12 +51,18 @@ jobs:
       # the resources from that same tag.
       - name: Determine shared resources ref
         id: shared-resources-ref
-        env:
-          WORKFLOW_REF: ${{ github.workflow_ref }}
         run: |
-          # github.workflow_ref looks like 'owner/repo/.github/workflows/name.yaml@ref'
-          # We extract everything after the '@'
-          echo "ref=${WORKFLOW_REF#*@}" >> "$GITHUB_OUTPUT"
+          # If job.workflow_sha is empty or evaluates to a PR reference from a caller context, 
+          # we safely fall back to the main branch. Otherwise, use the pinned SHA/tag.
+          TARGET_REF="${{ job.workflow_sha }}"
+          
+          if [[ -z "$TARGET_REF" ]] || [[ "$TARGET_REF" == refs/pull/* ]]; then
+            echo "No valid workflow SHA found or PR context detected. Falling back to main branch."
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "Pinning shared resources to workflow SHA: $TARGET_REF"
+            echo "ref=$TARGET_REF" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout shared resources
         uses: actions/checkout@v6
