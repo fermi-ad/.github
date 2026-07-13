@@ -125,8 +125,8 @@ jobs:
           tags: |
             # This is the default tag for the last commit of the default branch
             type=edge
-            # This tags PRs with the PR number. E.g., refs/pull/2/merge -> pr-2
-            type=ref,event=pr
+            # PR tags: pr-<number>-<run_number>
+            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ github.run_number }},enable=${{ github.event_name == 'pull_request' }}
             # This sets the latest tag for default branch
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ github.run_number }},enable={{is_default_branch}}
