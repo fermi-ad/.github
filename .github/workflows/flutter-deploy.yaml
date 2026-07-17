@@ -70,7 +70,6 @@ jobs:
           repository: fermi-ad/.github
           path: .shared-resources
           ref: ${{ steps.shared-resources-ref.outputs.ref }}
-          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Create an empty environment file that will be over-written later
         run: touch .env
