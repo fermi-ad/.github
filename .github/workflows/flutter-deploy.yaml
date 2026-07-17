@@ -107,9 +107,13 @@ jobs:
             PWA_STRAT="${{ inputs.pwa-strategy }}"
           fi
           
+          echo "Extract App Information"
+          VER=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          NAME=$(grep '^name:' pubspec.yaml | awk '{print $2}')
+
           echo "Building with PWA strategy: $PWA_STRAT"
           flutter pub get
-          flutter build web --no-web-resources-cdn --pwa-strategy=$PWA_STRAT ${{ inputs.use-wasm && '--wasm' || '' }}
+          flutter build web --no-web-resources-cdn --dart-define=APP_VERSION=$VER --dart-define=APP_NAME=$NAME --pwa-strategy=$PWA_STRAT ${{ inputs.use-wasm && '--wasm' || '' }}
 
       - name: Prepare Docker environment
         run: |
