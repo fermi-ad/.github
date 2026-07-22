@@ -47,15 +47,19 @@ jobs:
         name: Install static packages
         run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
 
-      # Fix permissions for the internal GitHub runner command directory
-      - if: ${{ inputs.container-image != '' }}
-        name: Fix Runner Permissions
-        run: sudo chown -R $(whoami) /__w/_temp/_runner_file_commands
-
-      - name: Checkout code
+      - if: ${{ inputs.container-image == '' }}
+        name: Checkout code (standard)
         uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+
+      - if: ${{ inputs.container-image != '' }}
+        name: Checkout code (custom container)
+        uses: actions/checkout@v6
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+          set-safe-directory: 'true'
+        options: --user root
 
       - if: ${{ inputs.references-internal-git-repo }}
         name: Generate a token
