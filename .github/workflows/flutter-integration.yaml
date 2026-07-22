@@ -35,6 +35,11 @@ jobs:
       contents: write
 
     steps:
+      # Fix permissions for the internal GitHub runner command directory
+      - if: ${{ inputs.container-image != '' }}
+        name: Fix Runner Permissions
+        run: sudo chown -R $(whoami) /__w/_temp/_runner_file_commands
+
       - name: Generate a token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -93,6 +98,11 @@ jobs:
       image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
 
     steps:
+      # Fix permissions for the internal GitHub runner command directory
+      - if: ${{ inputs.container-image != '' }}
+        name: Fix Runner Permissions
+        run: sudo chown -R $(whoami) /__w/_temp/_runner_file_commands
+
       - name: Generate a token
         id: app-token
         uses: actions/create-github-app-token@v3
