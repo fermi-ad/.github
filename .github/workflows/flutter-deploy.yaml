@@ -3,6 +3,11 @@ name: Continuous Delivery Workflow for Flutter web applications
 on:
   workflow_call:
     inputs:
+      container-image:
+        required: false
+        type: string
+        default: ''
+        description: 'The base image for the workflow. Defaults to the current GitHub Action image if nothing is provided.'
       pull-git-submodules:
         required: false
         type: boolean
@@ -27,6 +32,9 @@ jobs:
 
   Build-Dockerize-Push:
     runs-on: ubuntu-latest
+    container:
+      # If the input is empty, this evaluates to an empty string, skipping the container
+      image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
     permissions:
       contents: write
       

@@ -3,6 +3,11 @@ name: Continuous Deployment of Rust Applications
 on:
   workflow_call:
     inputs:
+      container-image:
+        required: false
+        type: string
+        default: ''
+        description: 'The base image for the workflow. Defaults to the current GitHub Action image if nothing is provided.'
       pull-git-submodules:
         required: false
         type: boolean
@@ -17,7 +22,7 @@ on:
         required: false 
         type: string
         default: ''
-        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
+        description: '**DEPRECATED - Provide a container image instead** A space-delimited list of packages that must be installed on the machine for the code to compile'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -29,6 +34,9 @@ env:
 jobs:
   Build-Push:
     runs-on: ubuntu-latest
+    container:
+      # If the input is empty, this evaluates to an empty string, skipping the container
+      image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
 

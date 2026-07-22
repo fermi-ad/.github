@@ -3,6 +3,11 @@ name: Continuous Integration workflow for Flutter apps
 on:
   workflow_call:
     inputs:
+      container-image:
+        required: false
+        type: string
+        default: ''
+        description: 'The base image for the workflow. Defaults to the current GitHub Action image if nothing is provided.'
       coverage-exclude:
         required: false
         type: string
@@ -23,6 +28,9 @@ jobs:
   Integration-tests:
     if: ${{ inputs.test != '' }}
     runs-on: ubuntu-latest
+    container:
+      # If the input is empty, this evaluates to an empty string, skipping the container
+      image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
     permissions:
       contents: write
 
@@ -57,7 +65,8 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
           
-      - uses: subosito/flutter-action@v2
+      - if: ${{ inputs.container-image == '' }}
+        uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
@@ -79,6 +88,9 @@ jobs:
 
   Linter-UnitTest-SmokeTest-Build:
     runs-on: ubuntu-latest
+    container:
+      # If the input is empty, this evaluates to an empty string, skipping the container
+      image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
 
     steps:
       - name: Generate a token
@@ -102,7 +114,8 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
           
-      - uses: subosito/flutter-action@v2
+      - if: ${{ inputs.container-image == '' }}
+        uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
