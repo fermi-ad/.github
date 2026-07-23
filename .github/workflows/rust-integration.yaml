@@ -41,26 +41,27 @@ jobs:
       image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
-      # Redirect Git configuration away from the root-owned /github/home
-      GIT_CONFIG_GLOBAL: /tmp/.gitconfig
+      # If a container image is specified, redirect EVERYTHING to /tmp immediately.
+      # If no container image is specified (legacy), fall back to standard empty behavior.
+      GIT_CONFIG_GLOBAL: ${{ inputs.container-image != '' && '/tmp/.gitconfig' || '' }}
+      GITHUB_ENV: ${{ inputs.container-image != '' && '/tmp/_runner_file_commands/set_env' || '' }}
+      GITHUB_OUTPUT: ${{ inputs.container-image != '' && '/tmp/_runner_file_commands/set_output' || '' }}
+      GITHUB_PATH: ${{ inputs.container-image != '' && '/tmp/_runner_file_commands/set_path' || '' }}
 
     steps:
       - if: ${{ inputs.static-dependencies }}
         name: Install static packages
         run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
 
-      # Clear and mock file commands ONLY when running in a custom container
-      - name: Prep Non-Root Runner Paths
+      # Initialize non-root directories used by git 
+      - name: Initialize Non-Root Directory Structures
         if: ${{ inputs.container-image != '' }}
         run: |
-          # Create a writable temporary location for Git configuration
           touch /tmp/.gitconfig
-          # Redirect GitHub internal state files out of the root-locked system folder
-          # and into a temporary folder owned fully by the container's non-root user.
-          mkdir -p "/tmp/_runner_file_commands"
-          echo "GITHUB_ENV=/tmp/_runner_file_commands/set_env" >> $GITHUB_ENV
-          echo "GITHUB_OUTPUT=/tmp/_runner_file_commands/set_output" >> $GITHUB_ENV
-          echo "GITHUB_PATH=/tmp/_runner_file_commands/set_path" >> $GITHUB_ENV
+          mkdir -p /tmp/_runner_file_commands
+          touch /tmp/_runner_file_commands/set_env
+          touch /tmp/_runner_file_commands/set_output
+          touch /tmp/_runner_file_commands/set_path
       
       # Initialize safe git tracking on the workspace
       - name: Configure Git Workspace Security
