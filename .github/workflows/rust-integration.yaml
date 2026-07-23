@@ -41,26 +41,30 @@ jobs:
       image: ${{ inputs.container-image != '' && inputs.container-image || '' }}
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
+      # Redirect Git configuration away from the root-owned /github/home
+      GIT_CONFIG_GLOBAL: /tmp/.gitconfig
 
     steps:
       - if: ${{ inputs.static-dependencies }}
         name: Install static packages
         run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
-      
-      # Initialize safe git tracking on the workspace
-      - name: Configure Git Workspace Security
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       # Clear and mock file commands ONLY when running in a custom container
       - name: Prep Non-Root Runner Paths
         if: ${{ inputs.container-image != '' }}
         run: |
+          # Create a writable temporary location for Git configuration
+          touch /tmp/.gitconfig
           # Redirect GitHub internal state files out of the root-locked system folder
           # and into a temporary folder owned fully by the container's non-root user.
-          mkdir -p "$HOME/_runner_file_commands"
-          echo "GITHUB_ENV=$HOME/_runner_file_commands/set_env" >> $GITHUB_ENV
-          echo "GITHUB_OUTPUT=$HOME/_runner_file_commands/set_output" >> $GITHUB_ENV
-          echo "GITHUB_PATH=$HOME/_runner_file_commands/set_path" >> $GITHUB_ENV
+          mkdir -p "/tmp/_runner_file_commands"
+          echo "GITHUB_ENV=/tmp/_runner_file_commands/set_env" >> $GITHUB_ENV
+          echo "GITHUB_OUTPUT=/tmp/_runner_file_commands/set_output" >> $GITHUB_ENV
+          echo "GITHUB_PATH=/tmp/_runner_file_commands/set_path" >> $GITHUB_ENV
+      
+      # Initialize safe git tracking on the workspace
+      - name: Configure Git Workspace Security
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - if: ${{ inputs.container-image == '' }}
         name: Checkout code (standard)
