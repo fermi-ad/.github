@@ -74,7 +74,6 @@ jobs:
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
           set-safe-directory: 'true'
-        options: --user root
 
       - if: ${{ inputs.references-internal-git-repo }}
         name: Generate a token
