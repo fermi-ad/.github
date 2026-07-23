@@ -90,6 +90,7 @@ jobs:
                 || 'safe.directory=*' }}
         with:
           push: never
+          inheritEnv: true
           runCmd: |
             set -e
             echo "=== RUNNING LINTS ==="
