@@ -63,7 +63,12 @@ jobs:
     steps:
       - if: ${{ inputs.static-dependencies }}
         name: Install static packages
-        run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}=
+        run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
+
+      - if: ${{ inputs.container-image != '' }}
+        name: Take ownership of workspace
+        run: |
+          sudo chown -R $(whoami):$(id -g) "$GITHUB_WORKSPACE"
 
       - if: ${{ inputs.references-internal-git-repo }}
         name: Configure Git for private repo access
