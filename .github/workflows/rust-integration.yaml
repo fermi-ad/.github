@@ -106,9 +106,6 @@ jobs:
             
             echo "=== RUNNING TESTS ==="
             cargo llvm-cov --lcov --output-path target/lcov.info
-            
-            echo "=== PROCESSING COVERAGE ==="
-            grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
 
       - name: Non-Container Lint
         if: ${{ steps.dev-container-check.outputs.present == 'false' }}
@@ -134,28 +131,16 @@ jobs:
       # The `&> /dev/null` portion ensures the output of `command -v grcov` is discarded 
       - name: Non-Container Install coverage dependencies
         if: ${{ steps.dev-container-check.outputs.present == 'false' }}
-        run: command -v grcov &> /dev/null || cargo install grcov
+        run: cargo install cargo-llvm-cov
+            
 
       - name: Non-Container Configure rustc so machine code can be read by the coverage reporter
         if: ${{ steps.dev-container-check.outputs.present == 'false' }}
-        run: rustup component add llvm-tools
+        run: rustup component add llvm-tools-preview
       
       - name: Non-Container Run tests with coverage (includes building the project)
         if: ${{ steps.dev-container-check.outputs.present == 'false' }}
-        run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test --all-features
-
-      # Breakdown of the command here:
-      #
-      # grcov ./target                     : Run grcov using profraw files found in the target/ directory
-      # --binary-path ./target/debug/deps/ : Path to the compiled binaries
-      # -s .                               : Source directory
-      # -t lcov                            : Specify output format as lcov
-      # --ignore-not-existing              : Ignore files that may be "referenced" in the compiled binaries but don't actually exist on disk (quirk of the LLVM and gcov)
-      # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
-      # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
-      - name: Non-Container Process raw coverage data into lcov format
-        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
-        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
+        run: cargo llvm-cov --lcov --output-path target/lcov.info
 
       - name: Generate coverage report
         uses: fermi-ad/code-coverage-reporter@v2
