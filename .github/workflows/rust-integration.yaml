@@ -89,8 +89,8 @@ jobs:
           push: never
           runCmd: |
             set -e
-            if [ -n "$CONTAINER_GIT_TOKEN}" ]; then
-              git config --global url."https://x-access-token:${CONTAINER_GIT_TOKEN}@://github.com".insteadOf "https://://github.com"
+            if [ -n "$CONTAINER_GIT_TOKEN" ]; then
+              git config --global url."https://x-access-token:${CONTAINER_GIT_TOKEN}@github.com".insteadOf "https://github.com"
             fi
             echo "=== RUNNING LINTS ==="
             (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1 || (cat lints.txt && exit 1)
