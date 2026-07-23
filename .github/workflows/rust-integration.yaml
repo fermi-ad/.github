@@ -91,7 +91,10 @@ jobs:
             set -e            
             if [ -n "$GIT_TOKEN" ]; then 
               echo "Configuring git API token"
-              git config url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
+              git config --file /tmp/git-credentials \
+                url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+                "https://github.com/"
+              export GIT_CONFIG_GLOBAL=/tmp/git-credentials
             fi
             
             echo "=== RUNNING LINTS ==="
