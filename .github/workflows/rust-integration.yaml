@@ -93,7 +93,7 @@ jobs:
             
             if [ -n "$GIT_TOKEN" ]; then 
               echo "Configuring git API token"
-              sudo git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
+              git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
             
             echo "=== RUNNING LINTS ==="
