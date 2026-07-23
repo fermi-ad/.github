@@ -22,7 +22,7 @@ on:
         required: false 
         type: string
         default: ''
-        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
+        description: '**DEPRECATED - have a .devcontainer/devcontainer.json in your repo instead** A space-delimited list of packages that must be installed on the machine for the code to compile'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -39,11 +39,6 @@ jobs:
         name: Install static packages
         run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
 
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
-
       - if: ${{ inputs.references-internal-git-repo }}
         name: Generate a token
         id: app-token
@@ -57,6 +52,20 @@ jobs:
         name: Configure Git for private repo access
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+      
+      - name: Check for dev container 
+        id: dev-container-check
+        run: |
+          if [ -f .devcontainer/devcontainer.json ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
         
       - name: Pull from dependency cache
         uses: actions/cache@v5
@@ -69,43 +78,69 @@ jobs:
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Lint
+      - name: Build and Run Dev Container
+        id: container-pipeline
+        if: ${{ steps.dev-container-check.outputs.present == 'true' }}
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          env: |
+            CARGO_NET_GIT_FETCH_WITH_CLI=${{ inputs.references-internal-git-repo }}
+            GIT_TOKEN=${{ steps.app-token.outputs.token }}
+          runCmd: |
+            set -e            
+            if [ -n "$GIT_TOKEN" ]; then 
+              echo "Configuring git API token"
+              git config --file /tmp/git-credentials \
+                url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+                "https://github.com/"
+              export GIT_CONFIG_GLOBAL=/tmp/git-credentials
+            fi
+            
+            echo "=== RUNNING LINTS ==="
+            (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1 || (cat lints.txt && exit 1)
+            
+            echo "=== PREPARING COVERAGE ==="
+            cargo install cargo-llvm-cov
+            rustup component add llvm-tools-preview
+            
+            echo "=== RUNNING TESTS ==="
+            cargo llvm-cov --lcov --output-path target/lcov.info
+
+      - name: Non-Container Lint
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
         id: linting
         run: |
             set +e
-            RESULTS=$(RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check)
-            CODE=$?
-            ENCODED=$( echo "$RESULTS" | base64 -w 0 )
-            echo "lints=$ENCODED" >> $GITHUB_OUTPUT
-            exit $CODE
+            (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1
+            exit $?
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
+
+      - name: Archive Lint Logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-results
+          path: lints.txt
 
       # Rust relies on a Low-Level Virtual Machine (LLVM) to capture coverage, 
       # and some massaging of the output binary is needed to get an LCOV file. 
       # This tool does that processing for us.
       # NOTE: First checks if grcov is already installed (pulled from cache), and only proceeds if not found
       # The `&> /dev/null` portion ensures the output of `command -v grcov` is discarded 
-      - name: Install coverage dependencies
-        run: command -v grcov &> /dev/null || cargo install grcov
+      - name: Non-Container Install coverage dependencies
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        run: cargo install cargo-llvm-cov
+            
 
-      - name: Configure rustc so machine code can be read by the coverage reporter
-        run: rustup component add llvm-tools
+      - name: Non-Container Configure rustc so machine code can be read by the coverage reporter
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        run: rustup component add llvm-tools-preview
       
-      - name: Run tests with coverage (includes building the project)
-        run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test --all-features
-
-      # Breakdown of the command here:
-      #
-      # grcov ./target                     : Run grcov using profraw files found in the target/ directory
-      # --binary-path ./target/debug/deps/ : Path to the compiled binaries
-      # -s .                               : Source directory
-      # -t lcov                            : Specify output format as lcov
-      # --ignore-not-existing              : Ignore files that may be "referenced" in the compiled binaries but don't actually exist on disk (quirk of the LLVM and gcov)
-      # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
-      # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
-      - name: Process raw coverage data into lcov format
-        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
+      - name: Non-Container Run tests with coverage (includes building the project)
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        run: cargo llvm-cov --lcov --output-path target/lcov.info
 
       - name: Generate coverage report
         uses: fermi-ad/code-coverage-reporter@v2
@@ -117,7 +152,17 @@ jobs:
       - if: always()
         name: Report linting results
         run: |
-          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "${{ steps.linting.outputs.lints }}" | base64 -d
-            exit 1
+          if [ "${{ steps.dev-container-check.outputs.present }}" = "true" ]; then
+            if [ "${{ steps.container-pipeline.outcome }}" = "failure" ] && [ ! -f target/lcov.info ]; then
+              echo "=== DEV CONTAINER EXECUTION FAILED ==="
+              cat lints.txt || true
+              exit 1
+            fi
+          else
+            if [ "${{ steps.linting.outcome }}" = "failure" ]; then
+              echo "=== LINTING FAILED: PRINTING ERROR LOGS ==="
+              cat lints.txt
+              exit 1
+            fi
           fi
+          echo "Linting and quality verifications passed cleanly!"
