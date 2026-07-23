@@ -86,8 +86,8 @@ jobs:
           CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
           GIT_CONFIG_PARAMETERS: >-
             ${{ steps.app-token.outputs.token != '' 
-                && format('\'url.https://x-access-token:{0}@github.com.insteadOf=https://github.com/\' \'safe.directory=*\'', steps.app-token.outputs.token) 
-                || '\'safe.directory=*\'' }}
+                && format('url.https://x-access-token:{0}@github.com.insteadOf=https://github.com/ safe.directory=*', steps.app-token.outputs.token) 
+                || 'safe.directory=*' }}
         with:
           push: never
           runCmd: |
