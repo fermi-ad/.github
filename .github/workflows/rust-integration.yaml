@@ -88,12 +88,10 @@ jobs:
             CARGO_NET_GIT_FETCH_WITH_CLI=${{ inputs.references-internal-git-repo }}
             GIT_TOKEN=${{ steps.app-token.outputs.token }}
           runCmd: |
-            set -e
-            export HOME=$(getent passwd 1000 | cut -d: -f6)
-            
+            set -e            
             if [ -n "$GIT_TOKEN" ]; then 
               echo "Configuring git API token"
-              git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
+              git config url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
             
             echo "=== RUNNING LINTS ==="
