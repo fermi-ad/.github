@@ -84,14 +84,14 @@ jobs:
         uses: devcontainers/ci@v0.3
         env:
           CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
-          CONTAINER_GIT_TOKEN: ${{ steps.app-token.outputs.token }}
+          GIT_CONFIG_PARAMETERS: >-
+            ${{ steps.app-token.outputs.token != '' 
+                && format('\'url.https://x-access-token:{0}@github.com.insteadOf=https://github.com/\' \'safe.directory=*\'', steps.app-token.outputs.token) 
+                || '\'safe.directory=*\'' }}
         with:
           push: never
           runCmd: |
             set -e
-            if [ -n "$CONTAINER_GIT_TOKEN" ]; then
-              git config --global url."https://x-access-token:${CONTAINER_GIT_TOKEN}@github.com".insteadOf "https://github.com"
-            fi
             echo "=== RUNNING LINTS ==="
             (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1 || (cat lints.txt && exit 1)
             
