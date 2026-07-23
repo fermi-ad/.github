@@ -101,11 +101,11 @@ jobs:
             (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1 || (cat lints.txt && exit 1)
             
             echo "=== PREPARING COVERAGE ==="
-            command -v grcov &> /dev/null || cargo install grcov
-            rustup component add llvm-tools
+            cargo install cargo-llvm-cov
+            rustup component add llvm-tools-preview
             
             echo "=== RUNNING TESTS ==="
-            CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test --all-features
+            cargo llvm-cov --lcov --output-path target/lcov.info
             
             echo "=== PROCESSING COVERAGE ==="
             grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
