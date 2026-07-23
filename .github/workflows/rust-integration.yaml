@@ -83,6 +83,7 @@ jobs:
         if: ${{ steps.dev-container-check.outputs.present == 'true' }}
         uses: devcontainers/ci@v0.3
         env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
           CONTAINER_GIT_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           push: never
