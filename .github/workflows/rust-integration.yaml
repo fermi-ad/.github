@@ -87,12 +87,13 @@ jobs:
           GIT_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           push: never
-          inheritEnv: true
+          env: CARGO_NET_GIT_FETCH_WITH_CLI GIT_TOKEN
           runCmd: |
             set -e
             export HOME=$(getent passwd 1000 | cut -d: -f6)
             
             if [ -n "$GIT_TOKEN" ]; then 
+              echo "Configuring git API token"
               sudo git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
             
