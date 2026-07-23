@@ -68,7 +68,7 @@ jobs:
       - if: ${{ inputs.references-internal-git-repo }}
         name: Configure Git for private repo access
         run: |
-          git config --global url."https://x-access-token:${{ needs.setup-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          sudo git config --global url."https://x-access-token:${{ needs.setup-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - if: ${{ inputs.container-image == '' }}
         name: Checkout code (standard)
@@ -80,7 +80,7 @@ jobs:
         name: Checkout code (custom container)
         run: |
           # Safe directory verification
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          sudo git config --global --add safe.directory "$GITHUB_WORKSPACE"
           
           # Initialize, fetch, and pull down the repository code manually
           git init .
@@ -168,4 +168,4 @@ jobs:
           echo "De-authorizing installation access token..."
           curl -L -X DELETE \
             -H "Authorization: Bearer ${{ needs.setup-token.outputs.token }}" \
-            "https://github.com"
+            "https://api.github.com/installation/token"
