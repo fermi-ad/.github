@@ -82,10 +82,15 @@ jobs:
         id: container-pipeline
         if: ${{ steps.dev-container-check.outputs.present == 'true' }}
         uses: devcontainers/ci@v0.3
+        env:
+          CONTAINER_GIT_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           push: never
           runCmd: |
             set -e
+            if [ -n "$CONTAINER_GIT_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${CONTAINER_GIT_TOKEN}@://github.com".insteadOf "https://://github.com"
+            fi
             echo "=== RUNNING LINTS ==="
             (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1 || (cat lints.txt && exit 1)
             
