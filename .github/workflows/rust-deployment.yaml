@@ -17,7 +17,7 @@ on:
         required: false 
         type: string
         default: ''
-        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
+        description: '**DEPRECATED - have a .devcontainer/devcontainer.json in your repo instead** A space-delimited list of packages that must be installed on the machine for the code to compile'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -29,29 +29,15 @@ env:
 jobs:
   Build-Push:
     runs-on: ubuntu-latest
-    env:
-      CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
 
     steps:
+      # ------------------------------------------
+      # --------------- Initial Setup ------------
+      # ------------------------------------------
+
       - if: ${{ inputs.static-dependencies }}
         name: Install static packages
         run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
-
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
-
-      - name: Pull from dependency cache
-        uses: actions/cache@v5
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - if: ${{ inputs.references-internal-git-repo }}
         name: Generate a token
@@ -67,8 +53,62 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Build
-        run: cargo build --release --verbose
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+
+      # --------------------------------------------------------------
+      # ---------------- Dev Container Check -------------------------
+      # --------------------------------------------------------------
+
+      - name: Check for dev container 
+        id: dev-container-check
+        run: |
+          if [ -f .devcontainer/devcontainer.json ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ----------------------------------------------------------------
+      # ------------------ Dev Container Build -------------------------
+      # ----------------------------------------------------------------
+
+      - name: Build Executable with Dev Container
+        if: ${{ steps.dev-container-check.outputs.present == 'true' }}
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          env: |
+            CARGO_NET_GIT_FETCH_WITH_CLI=${{ inputs.references-internal-git-repo }}
+            GIT_TOKEN=${{ steps.app-token.outputs.token }}
+          runCmd: |
+            set -e
+            
+            # Configure access to internal Git repositories
+            if [ -n "$GIT_TOKEN" ]; then 
+              echo "Configuring git API token"
+              git config --file /tmp/git-credentials \
+                url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+                "https://github.com/"
+              export GIT_CONFIG_GLOBAL=/tmp/git-credentials
+            fi
+            
+            echo "=== BUILD FOR RELEASE ==="
+            cargo build --release
+
+      # ----------------------------------------------------------------------
+      # ------------------------ Non-Container Build -------------------------
+      # ----------------------------------------------------------------------
+
+      - name: Non-Container Build
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        run: cargo build --release
+
+      # ----------------------------------------------------------------------
+      # ------------------------ Image Publishing ----------------------------
+      # ----------------------------------------------------------------------
 
       - name: Docker meta
         id: meta

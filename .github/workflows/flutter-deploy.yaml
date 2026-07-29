@@ -31,6 +31,9 @@ jobs:
       contents: write
       
     steps:
+      # ------------------------------------------
+      # --------------- Initial Setup ------------
+      # ------------------------------------------
       - name: Generate a token
         id: generate-token
         uses: actions/create-github-app-token@v3
@@ -45,6 +48,108 @@ jobs:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
           token: ${{ steps.generate-token.outputs.token }}
 
+      - name: Determine build context
+        run: |
+          if [ -f "lib/main.dart" ]; then
+            echo "BUILD_PATH=." >> $GITHUB_ENV
+          elif [ -f "example/lib/main.dart" ]; then
+            echo "BUILD_PATH=example" >> $GITHUB_ENV
+          else
+            echo "Error: lib/main.dart not found in root or example/"
+            exit 1
+          fi
+          
+      - name: Determine PWA strat 
+        run: |
+          # Determine PWA strategy: force offline-first for main branch
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "PWA_STRAT=offline-first" >> $GITHUB_ENV
+          else
+            echo "PWA_STRAT=${{ inputs.pwa-strategy }}" >> $GITHUB_ENV
+          fi
+          
+      - name: Extract app information
+        run: |
+          cd "${{ env.BUILD_PATH }}"
+          echo "APP_VER=$(grep '^version:' pubspec.yaml | awk '{print $2}')" >> $GITHUB_ENV 
+          echo "APP_NAME=$(grep '^name:' pubspec.yaml | awk '{print $2}')" >> $GITHUB_ENV
+
+      # --------------------------------------------------------------
+      # ---------------- Dev Container Check -------------------------
+      # --------------------------------------------------------------
+
+      - name: Check for dev container 
+        id: dev-container-check
+        run: |
+          if [ -f .devcontainer/devcontainer.json ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ----------------------------------------------------------------
+      # ------------------ Dev Container Build -------------------------
+      # ----------------------------------------------------------------
+
+      - name: Build Executable with Dev Container
+        if: ${{ steps.dev-container-check.outputs.present == 'true' }}
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          env: |
+            APP_NAME="${{ env.APP_NAME }}"
+            APP_VER="${{ env.APP_VER }}"
+            BUILD_PATH="${{ env.BUILD_PATH }}"
+            GIT_TOKEN="${{ steps.generate-token.outputs.token }}"
+            PWA_STRAT="${{ env.PWA_STRAT }}"
+            WASM_FLAG="${{ inputs.use-wasm && '--wasm' || '' }}"
+          runCmd: |
+            set -e
+            
+            # Configure access to internal Git repositories
+            if [ -n "$GIT_TOKEN" ]; then 
+              echo "Configuring git API token"
+              git config --file /tmp/git-credentials \
+                url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+                "https://github.com/"
+              export GIT_CONFIG_GLOBAL=/tmp/git-credentials
+            fi
+            
+            echo "=== BUILD FOR RELEASE ==="
+            cd $BUILD_PATH             
+            echo "Building with PWA strategy: ${PWA_STRAT}"
+            flutter pub get
+            flutter build web --no-web-resources-cdn --dart-define=APP_VERSION="$APP_VER" --dart-define=APP_NAME="$APP_NAME" --pwa-strategy="$PWA_STRAT" $WASM_FLAG
+
+      # ----------------------------------------------------------------------
+      # ------------------------ Non-Container Build -------------------------
+      # ----------------------------------------------------------------------
+
+      - name: Non-Container Configure Git for private repo access
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        run: |
+          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Non-Container Flutter install
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Non-Container Building web application
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        run: |
+          cd ${{ env.BUILD_PATH }}
+          
+          echo "Building with PWA strategy: ${{ env.PWA_STRAT }}"
+          flutter pub get
+          flutter build web --no-web-resources-cdn --dart-define=APP_VERSION="${{ env.APP_VER }}" --dart-define=APP_NAME="${{ env.APP_NAME }}" --pwa-strategy="${{ env.PWA_STRAT }}" ${{ inputs.use-wasm && '--wasm' || '' }}
+
+      # ----------------------------------------------------------------------
+      # ------------------------ Image Publishing ----------------------------
+      # ----------------------------------------------------------------------
+
       # To ensure reproducibility, we want to fetch the shared resources (nginx config, Dockerfile)
       # from the same version of the '.github' repository that this workflow is running from.
       # If a consumer pins this workflow to a specific tag (e.g., @v1.2.3), we should use
@@ -58,10 +163,10 @@ jobs:
           
           if [[ -z "$TARGET_REF" ]] || [[ "$TARGET_REF" == refs/pull/* ]]; then
             echo "No valid workflow SHA found or PR context detected. Falling back to main branch."
-            echo "ref=main" >> "$GITHUB_OUTPUT"
+            echo "ref=main" >> $GITHUB_OUTPUT
           else
             echo "Pinning shared resources to workflow SHA: $TARGET_REF"
-            echo "ref=$TARGET_REF" >> "$GITHUB_OUTPUT"
+            echo "ref=$TARGET_REF" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout shared resources
@@ -71,54 +176,11 @@ jobs:
           path: .shared-resources
           ref: ${{ steps.shared-resources-ref.outputs.ref }}
 
-      - name: Create an empty environment file that will be over-written later
-        run: touch .env
-
-      - name: Configure Git for private repo access
-        run: |
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: Determine build context
-        id: context
-        run: |
-          if [ -f "lib/main.dart" ]; then
-            echo "path=." >> $GITHUB_OUTPUT
-          elif [ -f "example/lib/main.dart" ]; then
-            echo "path=example" >> $GITHUB_OUTPUT
-          else
-            echo "Error: lib/main.dart not found in root or example/"
-            exit 1
-          fi
-
-      - name: Building web application
-        run: |
-          cd "${{ steps.context.outputs.path }}"
-          
-          # Determine PWA strategy: force offline-first for main branch
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            PWA_STRAT="offline-first"
-          else
-            PWA_STRAT="${{ inputs.pwa-strategy }}"
-          fi
-          
-          echo "Extract App Information"
-          VER=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-          NAME=$(grep '^name:' pubspec.yaml | awk '{print $2}')
-
-          echo "Building with PWA strategy: $PWA_STRAT"
-          flutter pub get
-          flutter build web --no-web-resources-cdn --dart-define=APP_VERSION=$VER --dart-define=APP_NAME=$NAME --pwa-strategy=$PWA_STRAT ${{ inputs.use-wasm && '--wasm' || '' }}
-
       - name: Prepare Docker environment
         run: |
           # Copy the standardized nginx config and Dockerfile into the build context
-          cp .shared-resources/.github/resources/flutter-nginx.conf "${{ steps.context.outputs.path }}/nginx.conf"
-          cp .shared-resources/.github/resources/flutter.Dockerfile "${{ steps.context.outputs.path }}/flutter.Dockerfile"
+          cp .shared-resources/.github/resources/flutter-nginx.conf "${{ env.BUILD_PATH }}/nginx.conf"
+          cp .shared-resources/.github/resources/flutter.Dockerfile "${{ env.BUILD_PATH }}/Dockerfile"
 
       - name: Docker meta
         id: meta
@@ -145,8 +207,7 @@ jobs:
       - name: Building Docker image and pushing to adregistry
         uses: docker/build-push-action@v7
         with:
-          context: ${{ steps.context.outputs.path }}
-          file: ${{ steps.context.outputs.path }}/flutter.Dockerfile
+          context: ${{ env.BUILD_PATH }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

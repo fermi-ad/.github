@@ -50,13 +50,10 @@ jobs:
             exit 1
           fi
 
-      - name: Create an empty environment file that will be overwritten later
-        run: touch .env
-
       - name: Configure Git for private repo access
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-          
+
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
@@ -94,35 +91,89 @@ jobs:
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
           token: ${{ steps.app-token.outputs.token }}
-        
-      - name: Create an empty environment file that will be overwritten later
-        run: touch .env
 
       - name: Configure Git for private repo access
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-          
-      - uses: subosito/flutter-action@v2
+
+      # --------------------------------------------------------------
+      # ---------------- Dev Container Check -------------------------
+      # --------------------------------------------------------------
+
+      - name: Check for dev container 
+        id: dev-container-check
+        run: |
+          if [ -f .devcontainer/devcontainer.json ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+          fi
+
+      # -----------------------------------------------------------------------------------
+      # ---------------------- Dev Container Pipeline -------------------------------------
+      # -----------------------------------------------------------------------------------
+
+      - name: Build and Run Dev Container
+        id: container-pipeline
+        if: ${{ steps.dev-container-check.outputs.present == 'true' }}
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          env: |
+            GIT_TOKEN=${{ steps.app-token.outputs.token }}
+          runCmd: |
+            set -e
+            
+            # Configure access to internal Git repositories
+            if [ -n "$GIT_TOKEN" ]; then 
+              echo "Configuring git API token"
+              git config --file /tmp/git-credentials \
+                url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+                "https://github.com/"
+              export GIT_CONFIG_GLOBAL=/tmp/git-credentials
+            fi
+            
+            echo "=== RESOLVING DEPENDENCIES ==="
+            flutter pub get
+            
+            echo "=== RUNNING LINTS ==="
+            (flutter analyze .) > lints.txt 2>&1 || (cat lints.txt && exit 1)
+            
+            echo "=== BUILDING WEB APP ==="
+            if [ -f "lib/main.dart" ]; then
+              flutter build web
+            elif [ -f "example/lib/main.dart" ]; then
+              (cd example && flutter pub get && flutter build web)
+            fi
+            
+            echo "=== RUNNING TESTS ==="
+            flutter test test/unit_tests test/widget --coverage
+
+      # -----------------------------------------------------------------------------------
+      # ---------------------- Non-Container Pipeline -------------------------------------
+      # -----------------------------------------------------------------------------------
+
+      - name: Non-Container Flutter install
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
+        uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
 
-      - name: Resolving dependencies
+      - name: Non-Container Resolving dependencies
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
         run: flutter pub get
-      
-      - name: Lint
+
+      - name: Non-Container Lint
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
         id: linting
         run: |
-            set +e
-            RESULTS=$(flutter analyze .)
-            CODE=$?
-            ENCODED=$( echo "$RESULTS" | base64 -w 0 )
-            echo "lints=$ENCODED" >> $GITHUB_OUTPUT
-            exit $CODE
+            (flutter analyze .) > lints.txt 2>&1 || (cat lints.txt && exit 1)
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
 
-      - name: Building web application
+      - name: Non-Container Building web application
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
         run: |
           if [ -f "lib/main.dart" ];
           then
@@ -132,12 +183,24 @@ jobs:
             (cd example && flutter pub get && flutter build web)
           fi
 
-      - name: Running unit and widget tests with coverage
+      - name: Non-Container Running unit and widget tests with coverage
+        if: ${{ steps.dev-container-check.outputs.present == 'false' }}
         run: |
           flutter test test/unit_tests test/widget --coverage
 
+      # ---------------------------------------------------------------------------------------      
+      # ---------------------- Pipeline Results Reporting -------------------------------------
+      # ---------------------------------------------------------------------------------------    
+
+      - name: Archive Lint Logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-results
+          path: lints.txt
+
       - name: Generate coverage report 
-        uses: fermi-ad/code-coverage-reporter@v2
+        uses: fermi-ad/code-coverage-reporter@v3
         with:
           include_pattern: ^.*\.dart$
           exclude_pattern: test/|\.dart_tool/${{ inputs.coverage-exclude }}
@@ -145,7 +208,17 @@ jobs:
       - if: always()
         name: Report linting results
         run: |
-          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "${{ steps.linting.outputs.lints }}" | base64 -d
-            exit 1
+          if [ "${{ steps.dev-container-check.outputs.present }}" = "true" ]; then
+            if [ "${{ steps.container-pipeline.outcome }}" = "failure" ] && [ ! -f coverage/lcov.info ]; then
+              echo "=== DEV CONTAINER EXECUTION FAILED ==="
+              cat lints.txt || true
+              exit 1
+            fi
+          else
+            if [ "${{ steps.linting.outcome }}" = "failure" ]; then
+              echo "=== LINTING FAILED: PRINTING ERROR LOGS ==="
+              cat lints.txt
+              exit 1
+            fi
           fi
+          echo "Linting and quality verifications passed cleanly!"
