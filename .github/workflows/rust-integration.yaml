@@ -101,7 +101,10 @@ jobs:
             fi
             
             echo "=== RUNNING LINTS ==="
-            (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1 || (cat lints.txt && exit 1)
+            # Checks code conventions with clippy and format with cargo fmt
+            # Both commands use `|| true` so the build and test phase also runs
+            RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings > lints.txt 2>&1 || true
+            cargo fmt -q --all -- --check >> lints.txt 2>&1 || true
             
             echo "=== RUNNING TESTS ==="
             cargo llvm-cov --lcov --output-path target/lcov.info
@@ -115,8 +118,10 @@ jobs:
         id: linting
         run: |
             set +e
-            (RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check) > lints.txt 2>&1
-            exit $?
+            RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings > lints.txt 2>&1
+            clippy_result=$?
+            cargo fmt -q --all -- --check >> lints.txt 2>&1
+            exit $(( clippy_result != 0 ? clippy_result : $? ))
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
 

@@ -137,7 +137,10 @@ jobs:
             flutter pub get
             
             echo "=== RUNNING LINTS ==="
-            (flutter analyze .) > lints.txt 2>&1 || (cat lints.txt && exit 1)
+            # Runs both the flutter and dart linters, as they return different results sometimes
+            # Both commands use `|| true` so the build and test phase also runs
+            flutter analyze . > lints.txt 2>&1 || true
+            dart analyze . >> lints.txt 2>&1 || true
             
             echo "=== BUILDING WEB APP ==="
             if [ -f "lib/main.dart" ]; then
@@ -168,7 +171,10 @@ jobs:
         if: ${{ steps.dev-container-check.outputs.present == 'false' }}
         id: linting
         run: |
-            (flutter analyze .) > lints.txt 2>&1 || (cat lints.txt && exit 1)
+          flutter analyze . > lints.txt 2>&1
+          flutter_result=$?
+          dart analyze . >> lints.txt 2>&1
+          exit $((flutter_result != 0 ? flutter_result : $?))
         # Ensures we also run the unit tests even if there are linting errors
         continue-on-error: true
 
