@@ -18,11 +18,6 @@ on:
         type: boolean
         default: false
         description: 'Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo'
-      static-dependencies:
-        required: false 
-        type: string
-        default: ''
-        description: 'A space-delimited list of packages that must be installed on the machine for the code to compile'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -31,18 +26,11 @@ concurrency:
 jobs:
   analysis:
     runs-on: ubuntu-latest
-    env:
-      CARGO_NET_GIT_FETCH_WITH_CLI: ${{ inputs.references-internal-git-repo }}
 
     steps:
-      - if: ${{ inputs.static-dependencies }}
-        name: Install static packages
-        run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.static-dependencies }}
-
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+      # ------------------------------------------
+      # --------------- Initial Setup ------------
+      # ------------------------------------------
 
       - if: ${{ inputs.references-internal-git-repo }}
         name: Generate a token
@@ -53,62 +41,61 @@ jobs:
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - if: ${{ inputs.references-internal-git-repo }}
-        name: Configure Git for private repo access
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
-        
-      - name: Pull from dependency cache
-        uses: actions/cache@v5
-        continue-on-error: false
+      - name: Checkout code
+        uses: actions/checkout@v6
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
 
-      - name: Lint
-        id: linting
-        run: |
-            set +e
-            RESULTS=$(RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check)
-            CODE=$?
-            ENCODED=$( echo "$RESULTS" | base64 -w 0 )
-            echo "lints=$ENCODED" >> $GITHUB_OUTPUT
-            exit $CODE
-        # Ensures we also run the unit tests even if there are linting errors
-        continue-on-error: true
+      # ----------------------------------------------------------------
+      # -------------------------- Build -------------------------------
+      # ----------------------------------------------------------------
 
-      # Rust relies on a Low-Level Virtual Machine (LLVM) to capture coverage, 
-      # and some massaging of the output binary is needed to get an LCOV file. 
-      # This tool does that processing for us.
-      # NOTE: First checks if grcov is already installed (pulled from cache), and only proceeds if not found
-      # The `&> /dev/null` portion ensures the output of `command -v grcov` is discarded 
-      - name: Install coverage dependencies
-        run: command -v grcov &> /dev/null || cargo install grcov
+      - name: Build and Run Dev Container
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          env: |
+            CARGO_NET_GIT_FETCH_WITH_CLI=${{ inputs.references-internal-git-repo }}
+            GIT_TOKEN=${{ steps.app-token.outputs.token }}
+          runCmd: |
+            set -e
+            
+            # Configure access to internal Git repositories
+            if [ -n "$GIT_TOKEN" ]; then 
+              echo "Configuring git API token"
+              git config --file /tmp/git-credentials \
+                url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf \
+                "https://github.com/"
+              export GIT_CONFIG_GLOBAL=/tmp/git-credentials
+            fi
+            
+            echo "=== RUNNING LINTS ==="
+            # Checks code conventions with clippy and format with cargo fmt
+            # Both commands use `|| ...` so the build and test phase also runs
+            RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings > lints.txt 2>&1 || LINTING_FAILED=true
+            cargo fmt -q --all -- --check >> lints.txt 2>&1 || LINTING_FAILED=true
+            
+            # Deletes the lint output file if no failures were reported
+            if [ ! -v LINTING_FAILED ]; then
+              rm lints.txt
+            fi
+            
+            echo "=== RUNNING TESTS ==="
+            cargo llvm-cov --lcov --output-path target/lcov.info
 
-      - name: Configure rustc so machine code can be read by the coverage reporter
-        run: rustup component add llvm-tools
-      
-      - name: Run tests with coverage (includes building the project)
-        run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test --all-features
+      # ---------------------------------------------------------------------------------------      
+      # ---------------------- Pipeline Results Reporting -------------------------------------
+      # ---------------------------------------------------------------------------------------    
 
-      # Breakdown of the command here:
-      #
-      # grcov ./target                     : Run grcov using profraw files found in the target/ directory
-      # --binary-path ./target/debug/deps/ : Path to the compiled binaries
-      # -s .                               : Source directory
-      # -t lcov                            : Specify output format as lcov
-      # --ignore-not-existing              : Ignore files that may be "referenced" in the compiled binaries but don't actually exist on disk (quirk of the LLVM and gcov)
-      # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
-      # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
-      - name: Process raw coverage data into lcov format
-        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
+      - name: Archive Lint Logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-results
+          path: lints.txt
 
       - name: Generate coverage report
-        uses: fermi-ad/code-coverage-reporter@v2
+        uses: fermi-ad/code-coverage-reporter@v3
         with:
           coverage_file: target/lcov.info
           include_pattern: src/.*\.rs$
@@ -117,7 +104,8 @@ jobs:
       - if: always()
         name: Report linting results
         run: |
-          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "${{ steps.linting.outputs.lints }}" | base64 -d
+          if [ -f lints.txt ]; then
+            cat lints.txt
             exit 1
           fi
+          echo "Linting and quality verifications passed cleanly!"
