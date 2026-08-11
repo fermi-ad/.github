@@ -72,8 +72,8 @@ jobs:
             echo "=== RUNNING LINTS ==="
             # Checks code conventions with clippy and format with cargo fmt
             # Both commands use `|| ...` so the build and test phase also runs
-            RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings > lints.txt 2>&1 || LINTING_FAILED=true
-            cargo fmt -q --all -- --check >> lints.txt 2>&1 || LINTING_FAILED=true
+            RUSTFLAGS=-Wunused-crate-dependencies cargo clippy --all-targets --all-features -- -D warnings > lints.txt 2>&1 || LINTING_FAILED=true
+            cargo fmt --all -- --check >> lints.txt 2>&1 || LINTING_FAILED=true
             
             # Deletes the lint output file if no failures were reported
             if [ ! -v LINTING_FAILED ]; then
