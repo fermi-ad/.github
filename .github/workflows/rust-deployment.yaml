@@ -83,7 +83,7 @@ jobs:
             
             if [ "$BUILD_DOCS" = "true" ]; then 
               echo "=== GENERATING DOCS ==="
-              cargo doc --no-deps --all-features
+              cargo doc --workspace --no-deps --all-features
             fi
 
       # ----------------------------------------------------------------------
