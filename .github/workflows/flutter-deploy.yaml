@@ -7,29 +7,28 @@ on:
         required: false
         type: boolean
         default: false
-        description: 'Indicates whether this repository has Git submodules to pull.'
+        description: "Indicates whether this repository has Git submodules to pull."
       use-wasm:
         required: false
         type: boolean
         default: false
-        description: 'Indicates whether to build with WebAssembly (--wasm flag).'
+        description: "Indicates whether to build with WebAssembly (--wasm flag)."
       pwa-strategy:
         required: false
         type: string
-        default: 'none'
-        description: 'The PWA strategy to use (e.g., none, offline-first). Defaults to none for non-production builds.'
-        
+        default: "none"
+        description: "The PWA strategy to use (e.g., none, offline-first). Defaults to none for non-production builds."
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-
   Build-Dockerize-Push:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
       # ------------------------------------------
       # --------------- Initial Setup ------------
@@ -41,7 +40,7 @@ jobs:
           app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
           private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-    
+
       - name: Checking out source code
         uses: actions/checkout@v6
         with:
@@ -58,8 +57,8 @@ jobs:
             echo "Error: lib/main.dart not found in root or example/"
             exit 1
           fi
-          
-      - name: Determine PWA strat 
+
+      - name: Determine PWA strat
         run: |
           # Determine PWA strategy: force offline-first for main branch
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
@@ -67,7 +66,7 @@ jobs:
           else
             echo "PWA_STRAT=${{ inputs.pwa-strategy }}" >> $GITHUB_ENV
           fi
-          
+
       - name: Extract app information
         run: |
           cd "${{ env.BUILD_PATH }}"
@@ -83,15 +82,15 @@ jobs:
         with:
           push: never
           env: |
-            APP_NAME="${{ env.APP_NAME }}"
-            APP_VER="${{ env.APP_VER }}"
-            BUILD_PATH="${{ env.BUILD_PATH }}"
-            GIT_TOKEN="${{ steps.generate-token.outputs.token }}"
-            PWA_STRAT="${{ env.PWA_STRAT }}"
-            WASM_FLAG="${{ inputs.use-wasm && '--wasm' || '' }}"
+            APP_NAME=${{ env.APP_NAME }}
+            APP_VER=${{ env.APP_VER }}
+            BUILD_PATH=${{ env.BUILD_PATH }}
+            GIT_TOKEN=${{ steps.generate-token.outputs.token }}
+            PWA_STRAT=${{ env.PWA_STRAT }}
+            WASM_FLAG=${{ inputs.use-wasm && '--wasm' || '' }}
           runCmd: |
             set -e
-            
+
             # Configure access to internal Git repositories
             if [ -n "$GIT_TOKEN" ]; then 
               echo "Configuring git API token"
@@ -100,9 +99,9 @@ jobs:
                 "https://github.com/"
               export GIT_CONFIG_GLOBAL=/tmp/git-credentials
             fi
-            
+
             echo "=== BUILD FOR RELEASE ==="
-            cd $BUILD_PATH             
+            cd "${BUILD_PATH:-.}"
             echo "Building with PWA strategy: ${PWA_STRAT}"
             flutter pub get
             flutter build web --no-web-resources-cdn --dart-define=APP_VERSION="$APP_VER" --dart-define=APP_NAME="$APP_NAME" --pwa-strategy="$PWA_STRAT" $WASM_FLAG
@@ -121,7 +120,7 @@ jobs:
           # If job.workflow_sha is empty or evaluates to a PR reference from a caller context, 
           # we safely fall back to the main branch. Otherwise, use the pinned SHA/tag.
           TARGET_REF="${{ job.workflow_sha }}"
-          
+
           if [[ -z "$TARGET_REF" ]] || [[ "$TARGET_REF" == refs/pull/* ]]; then
             echo "No valid workflow SHA found or PR context detected. Falling back to main branch."
             echo "ref=main" >> $GITHUB_OUTPUT
