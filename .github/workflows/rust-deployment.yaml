@@ -5,24 +5,24 @@ on:
     inputs:
       docs:
         required: false
-        type: boolean 
-        default: false 
+        type: boolean
+        default: false
         description: "Indicates whether documentation should be generated and deployed to GitHub Pages. Set 'pages' and 'id-token' permissions to be writable."
       image:
         required: false
-        type: boolean 
-        default: true 
-        description: 'Indicates whether an image should be built and deployed to Harbor.'
+        type: boolean
+        default: true
+        description: "Indicates whether an image should be built and deployed to Harbor."
       pull-git-submodules:
         required: false
         type: boolean
         default: false
-        description: 'Indicates whether this repository has Git submodules to pull.'
+        description: "Indicates whether this repository has Git submodules to pull."
       references-internal-git-repo:
         required: false
         type: boolean
         default: false
-        description: 'Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo.'
+        description: "Indicates whether this repository has a dependency in its Cargo.toml that comes from an internal GitHub repo."
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -31,6 +31,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       # ------------------------------------------
@@ -50,6 +52,13 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || github.token }}
+
+      - name: Auto tag
+        uses: fermi-ad/auto-tag@v1
+        with:
+          project-type: rust
 
       # ----------------------------------------------------------------
       # ------------------------ Build ---------------------------------
@@ -66,7 +75,7 @@ jobs:
             GIT_TOKEN=${{ steps.app-token.outputs.token }}
           runCmd: |
             set -e
-            
+
             # Configure access to internal Git repositories
             if [ -n "$GIT_TOKEN" ]; then 
               echo "Configuring git API token"
@@ -75,12 +84,12 @@ jobs:
                 "https://github.com/"
               export GIT_CONFIG_GLOBAL=/tmp/git-credentials
             fi
-            
+
             if [ "$BUILD_IMAGE" = "true" ]; then
               echo "=== BUILD FOR RELEASE ==="
               cargo build --release
             fi
-            
+
             if [ "$BUILD_DOCS" = "true" ]; then 
               echo "=== GENERATING DOCS ==="
               cargo doc --workspace --no-deps --all-features
@@ -128,7 +137,7 @@ jobs:
         if: ${{ inputs.docs }}
         uses: actions/upload-pages-artifact@v5
         with:
-          path: 'target/doc'
+          path: "target/doc"
 
   deploy-docs:
     environment:
