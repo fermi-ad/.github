@@ -3,6 +3,11 @@ name: Continuous Delivery Workflow for Flutter web applications
 on:
   workflow_call:
     inputs:
+      docs:
+        required: false
+        type: boolean
+        default: false
+        description: "Indicates whether documentation should be generated and deployed to GitHub Pages. Set 'pages' and 'id-token' permisions to be writable"
       pull-git-submodules:
         required: false
         type: boolean
@@ -84,6 +89,7 @@ jobs:
           env: |
             APP_NAME=${{ env.APP_NAME }}
             APP_VER=${{ env.APP_VER }}
+            BUILD_DOCS=${{ inputs.docs }}
             BUILD_PATH=${{ env.BUILD_PATH }}
             GIT_TOKEN=${{ steps.generate-token.outputs.token }}
             PWA_STRAT=${{ env.PWA_STRAT }}
@@ -105,6 +111,11 @@ jobs:
             echo "Building with PWA strategy: ${PWA_STRAT}"
             flutter pub get
             flutter build web --no-web-resources-cdn --dart-define=APP_VERSION="$APP_VER" --dart-define=APP_NAME="$APP_NAME" --pwa-strategy="$PWA_STRAT" $WASM_FLAG
+
+            if [ "$BUILD_DOCS" = "true" ]; then
+              echo "=== GENERATING DOCS ==="
+              dart doc
+            fi
 
       # ----------------------------------------------------------------------
       # ------------------------ Image Publishing ----------------------------
@@ -171,3 +182,19 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Upload Pages Artifacts
+        if: ${{ inputs.docs }}
+        uses: actions/upload-pages-artifacts@v5
+        with:
+          path: 'doc/api'
+
+  deploy-docs:
+    environment:
+      name: github-pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ inputs.docs }}
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v5
