@@ -133,8 +133,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          # git's HTTP auth expects a Basic auth header (base64 of
+          # "x-access-token:<token>"), not a raw Bearer token. Using
+          # "bearer" here makes GitHub reject the request with
+          # "invalid credentials", so the clone/push below would fail.
+          auth_header="basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+
           repository_directory="$RUNNER_TEMP/template-usage-repository"
-          git -c "http.extraheader=AUTHORIZATION: bearer ${GH_TOKEN}" \
+          git -c "http.extraheader=AUTHORIZATION: ${auth_header}" \
             clone --depth=1 --no-tags --branch main \
             "https://github.com/${GITHUB_REPOSITORY}.git" \
             "$repository_directory"
@@ -150,5 +156,5 @@ jobs:
           git -C "$repository_directory" commit \
             --message "chore: remove one-time template usage notification workflow"
           git -C "$repository_directory" \
-            -c "http.extraheader=AUTHORIZATION: bearer ${GH_TOKEN}" \
+            -c "http.extraheader=AUTHORIZATION: ${auth_header}" \
             push origin HEAD:main
