@@ -2,6 +2,17 @@ name: Continuous Integration workflow for Dart packages
 
 on:
   workflow_call:
+    inputs:
+      pull-git-submodules:
+        description: 'Whether to check out Git submodules.'
+        required: false
+        type: boolean
+        default: false
+      references-internal-git-repo:
+        description: 'Whether Dart dependencies require access to private GitHub repositories.'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check:
@@ -10,6 +21,22 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v6
+        with:
+          submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Generate a token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.ACTION_SETTINGS_APP_ID }}
+          private-key: ${{ secrets.ACTION_SETTINGS_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - if: ${{ inputs.references-internal-git-repo }}
+        name: Configure Git for private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Set up Dart
         uses: dart-lang/setup-dart@v1
