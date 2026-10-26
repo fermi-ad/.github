@@ -17,10 +17,13 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: ${{ inputs.pull-git-submodules && 'recursive' || 'false' }}
 
@@ -52,5 +55,14 @@ jobs:
       - name: Analyze
         run: dart analyze
 
-      - name: Test
-        run: dart test
+      - name: Test with coverage
+        run: |
+          mkdir -p coverage
+          dart test --coverage-path=coverage/lcov.info
+
+      - name: Generate coverage report
+        uses: fermi-ad/code-coverage-reporter@v3
+        with:
+          coverage_file: coverage/lcov.info
+          include_pattern: ^.*\.dart$
+          exclude_pattern: test/|\.dart_tool/
