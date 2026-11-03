@@ -25,6 +25,10 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    # One run at a time per base branch and submodule, so two notifications can't race on its branch
+    concurrency:
+      group: submodule-update-${{ inputs.base_branch }}-${{ inputs.submodule_path }}
+      cancel-in-progress: false
     steps:
       - name: Generate Token
         id: generate-token
@@ -37,6 +41,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          # Build from the branch the PR targets, not whichever ref triggered the run
+          ref: ${{ inputs.base_branch }}
           submodules: true
           # Use the app token for checkout so we have permission to push back later
           token: ${{ steps.generate-token.outputs.token }}
@@ -45,27 +51,44 @@ jobs:
       - name: Update and Create PR
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          SUBMODULE_NAME: ${{ inputs.submodule_name }}
+          SUBMODULE_PATH: ${{ inputs.submodule_path }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
+          # One branch per base branch and submodule path, reused by every run so an open PR is
+          # updated in place. The path is unique within a repo, unlike the free-text name, and
+          # "/" becomes "-" so each part is a single ref segment and no name can nest in another.
+          BRANCH_NAME="automation/submodule-update/${BASE_BRANCH//\//-}/${SUBMODULE_PATH//\//-}"
+          OPEN_PRS=$(gh pr list --head "$BRANCH_NAME" --base "$BASE_BRANCH" --state open \
+            --json number --jq '.[].number')
+
           # Update the specific submodule path
-          git submodule update --remote ${{ inputs.submodule_path }}
-          
+          git submodule update --remote "$SUBMODULE_PATH"
+
           if [[ -n $(git status -s) ]]; then
-            # Use timestamp to avoid branch name collisions
-            BRANCH_NAME="automation/update-${{ inputs.submodule_name }}-$(date +%s)"
-            git checkout -b "$BRANCH_NAME"
-            git add ${{ inputs.submodule_path }}
-            git commit -m "chore: update ${{ inputs.submodule_name }} submodule"
-            git push origin "$BRANCH_NAME"
-            
-            # Generalized PR body using the submodule name
-            gh pr create \
-              --title "Update ${{ inputs.submodule_name }} Submodule" \
-              --body "This is an automated update for the \`${{ inputs.submodule_name }}\` submodule at path \`${{ inputs.submodule_path }}\`. This PR was triggered by an external update notification." \
-              --base ${{ inputs.base_branch }} \
-              --head "$BRANCH_NAME"
+            # Rebuild the branch from the base each run, so it never goes stale behind it
+            git checkout -B "$BRANCH_NAME"
+            git add "$SUBMODULE_PATH"
+            git commit -m "chore: update $SUBMODULE_NAME submodule"
+            git push --force origin "$BRANCH_NAME"
+
+            if [[ -z "$OPEN_PRS" ]]; then
+              gh pr create \
+                --title "Update $SUBMODULE_NAME submodule ($SUBMODULE_PATH into $BASE_BRANCH)" \
+                --body "This is an automated update for the \`$SUBMODULE_NAME\` submodule at path \`$SUBMODULE_PATH\`. It was triggered by an external update notification, and later notifications update this PR in place." \
+                --base "$BASE_BRANCH" \
+                --head "$BRANCH_NAME"
+            else
+              echo "Updated open PR #$OPEN_PRS on $BRANCH_NAME."
+            fi
           else
-            echo "No changes detected in ${{ inputs.submodule_path }}."
+            echo "No changes detected in $SUBMODULE_PATH."
+            # The base already has the newest commit, so merging an open bot PR would roll it back
+            for pr in $OPEN_PRS; do
+              gh pr close "$pr" --delete-branch \
+                --comment "Closing: $BASE_BRANCH already has the latest $SUBMODULE_NAME commit."
+            done
           fi
