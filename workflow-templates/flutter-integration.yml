@@ -1,0 +1,16 @@
+name: Continuous Integration for Flutter applications
+
+on:
+  push:
+    branches:
+      - "main"
+
+jobs:
+  test:
+    uses: fermi-ad/.github/.github/workflows/flutter-integration.yaml@latest
+    secrets: inherit
+    strategy:
+      fail-fast: false
+      matrix:
+        test: 
+          - smoke_test
