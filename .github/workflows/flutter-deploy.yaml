@@ -131,10 +131,10 @@ jobs:
             type=edge
             # This sets the latest tag for default branch
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.run_number }},enable={{is_default_branch}}
             # A default for projects that allow deployments while a PR is still open
-            type=raw,value=staging,enable={{ is_not_default_branch }}
-            # Always add the run number
-            type=raw,value=${{ github.run_number }}
+            # PR tags: pr-<number>-<run_number>
+            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ github.run_number }},enable=${{ github.event_name == 'pull_request' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
