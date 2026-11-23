@@ -12,6 +12,13 @@ The pipeline consists of two parts:
 1. The Dispatcher (The Source): A workflow in the source repository that notifies downstream consumers when changes occur.
 2. The Receiver (The Consumer): A workflow in your service repository that catches that notification and opens a Pull Request to update the submodule.
 
+The receiver keeps one Pull Request per base branch and submodule, on the branch `automation/submodule-update/<base_branch>/<submodule_path>` (with `/` replaced by `-`):
+
+- If that Pull Request is still open, later notifications update it in place instead of opening another.
+- The branch is rebuilt from the base branch each time, so the Pull Request never falls behind it.
+- If the base branch already has the newest submodule commit, an open Pull Request is closed, since merging it would roll the submodule back.
+- The bot owns the branch: commits pushed to it by hand are overwritten by the next update.
+
 ### Implementation Example
 
 1. Set up the sispatcher (Source Repo)
@@ -79,4 +86,5 @@ jobs:
 ### Terminology guide
 
 submodule_name: The logical name used for PR titles (e.g., interface-definitions).
-submodule_path: The actual file system path where the submodule is checked out in your repository.
+submodule_path: The actual file system path where the submodule is checked out in your repository. It also names the update branch, so each submodule gets its own.
+base_branch: The branch the Pull Request targets and the update branch is built from (default: main).
