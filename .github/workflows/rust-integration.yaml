@@ -72,43 +72,36 @@ jobs:
       - name: Lint
         id: linting
         run: |
-            set +e
-            RESULTS=$(RUSTFLAGS=-Wunused-crate-dependencies cargo clippy -q --all-targets --all-features -- -D warnings && cargo fmt -q --all -- --check)
-            CODE=$?
-            ENCODED=$( echo "$RESULTS" | base64 -w 0 )
-            echo "lints=$ENCODED" >> $GITHUB_OUTPUT
-            exit $CODE
-        # Ensures we also run the unit tests even if there are linting errors
-        continue-on-error: true
+            # Checks code conventions with clippy and format with cargo fmt
+            # Both commands use `|| ...` so the build and test phase also runs
+            RUSTFLAGS=-Wunused-crate-dependencies cargo clippy --workspace --all-targets --all-features -- -D warnings > lints.txt 2>&1 || LINTING_FAILED=true
+            cargo fmt --all -- --check >> lints.txt 2>&1 || LINTING_FAILED=true
+            # Deletes the lint output file if no failures were reported
+            if [ ! -v LINTING_FAILED ]; then
+              rm lints.txt
+            fi
 
-      # Rust relies on a Low-Level Virtual Machine (LLVM) to capture coverage, 
-      # and some massaging of the output binary is needed to get an LCOV file. 
-      # This tool does that processing for us.
-      # NOTE: First checks if grcov is already installed (pulled from cache), and only proceeds if not found
-      # The `&> /dev/null` portion ensures the output of `command -v grcov` is discarded 
+      # NOTE: First checks if llvm-cov is already installed (pulled from cache), and only proceeds if not found
+      # The `&> /dev/null` portion ensures the output of `command -v llvm-cov` is discarded 
       - name: Install coverage dependencies
-        run: command -v grcov &> /dev/null || cargo install grcov
-
-      - name: Configure rustc so machine code can be read by the coverage reporter
-        run: rustup component add llvm-tools
+        run: command -v cargo-llvm-cov &> /dev/null || { cargo install cargo-llvm-cov && rustup component add llvm-tools-preview; }
       
       - name: Run tests with coverage (includes building the project)
-        run: CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='target/cargo-test-%p-%m.profraw' cargo test --all-features
+        run: cargo llvm-cov --all-features --workspace --all-targets --lcov --output-path target/lcov.info
 
-      # Breakdown of the command here:
-      #
-      # grcov ./target                     : Run grcov using profraw files found in the target/ directory
-      # --binary-path ./target/debug/deps/ : Path to the compiled binaries
-      # -s .                               : Source directory
-      # -t lcov                            : Specify output format as lcov
-      # --ignore-not-existing              : Ignore files that may be "referenced" in the compiled binaries but don't actually exist on disk (quirk of the LLVM and gcov)
-      # --ignore '../*' --ignore "/*"      : Ignore references to Rust stdlib and other crates in $HOME/.cargo/
-      # -o target/lcov.info                : Output report to target/lcov.info for use in the next step
-      - name: Process raw coverage data into lcov format
-        run: grcov ./target --binary-path ./target/debug/deps/ -s . -t lcov --ignore-not-existing --ignore '../*' --ignore '/*' --ignore 'target/**' -o target/lcov.info
+      # ---------------------------------------------------------------------------------------      
+      # ---------------------- Pipeline Results Reporting -------------------------------------
+      # ---------------------------------------------------------------------------------------    
+
+      - name: Archive Lint Logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-results
+          path: lints.txt
 
       - name: Generate coverage report
-        uses: fermi-ad/code-coverage-reporter@v2
+        uses: fermi-ad/code-coverage-reporter@v3
         with:
           coverage_file: target/lcov.info
           include_pattern: src/.*\.rs$
@@ -117,7 +110,8 @@ jobs:
       - if: always()
         name: Report linting results
         run: |
-          if [ "${{ steps.linting.outcome }}" = "failure" ]; then
-            echo "${{ steps.linting.outputs.lints }}" | base64 -d
+          if [ -f lints.txt ]; then
+            cat lints.txt
             exit 1
           fi
+          echo "Linting and quality verifications passed cleanly!"
